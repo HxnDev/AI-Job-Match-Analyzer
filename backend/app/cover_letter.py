@@ -1,5 +1,7 @@
-import google.generativeai as genai
 from typing import Dict
+
+import google.generativeai as genai
+
 
 def generate_cover_letter(job_link: str) -> Dict[str, any]:
     """
@@ -40,23 +42,14 @@ def generate_cover_letter(job_link: str) -> Dict[str, any]:
             "temperature": 0.7,
             "top_p": 0.8,
             "top_k": 40,
-            "max_output_tokens": 2048
+            "max_output_tokens": 2048,
         }
         response = model.generate_content(prompt, generation_config=model_config)
 
         if response and response.text:
-            return {
-                "success": True,
-                "cover_letter": response.text.strip()
-            }
+            return {"success": True, "cover_letter": response.text.strip()}
         else:
-            return {
-                "success": False,
-                "error": "Failed to generate cover letter"
-            }
+            return {"success": False, "error": "Failed to generate cover letter"}
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error generating cover letter: {str(e)}"
-        }
+        return {"success": False, "error": f"Error generating cover letter: {str(e)}"}

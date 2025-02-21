@@ -1,12 +1,30 @@
-import google.generativeai as genai
-import json
-from typing import BinaryIO
-from PyPDF2 import PdfReader
+"""
+Resume analysis module for processing and analyzing resumes against job descriptions.
+This module handles PDF parsing, text extraction, and AI-based analysis.
+"""
+
 import io
+import json
 import re
+from typing import BinaryIO, Dict, Union
+
+import google.generativeai as genai
+from PyPDF2 import PdfReader
+
 
 def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
-    """Extract text from PDF file"""
+    """
+    Extract text content from a PDF file.
+
+    Args:
+        file_bytes: File object containing the PDF data
+
+    Returns:
+        str: Extracted text from the PDF
+
+    Raises:
+        ValueError: If there's an error reading the PDF
+    """
     try:
         pdf_buffer = io.BytesIO(file_bytes.read())
         file_bytes.seek(0)
@@ -17,123 +35,132 @@ def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
             text += page.extract_text() + "\n"
         return text
     except Exception as e:
-        raise Exception(f"Error reading PDF: {str(e)}")
+        raise ValueError(f"Error reading PDF: {str(e)}") from e
 
-def analyze_resume(resume: BinaryIO, job_links: str) -> dict:
-    """Analyze a resume against job descriptions"""
+
+def analyze_resume(resume: BinaryIO, job_links: str) -> Dict[str, Union[bool, list, str]]:
+    """
+    Analyze a resume against job descriptions using AI.
+
+    Args:
+        resume: File object containing the resume
+        job_links: JSON string containing job links
+
+    Returns:
+        dict: Analysis results including matches and recommendations
+    """
     try:
         # Read resume content
         filename = resume.filename.lower()
-        if filename.endswith('.pdf'):
-            resume_content = extract_text_from_pdf(resume)
-        elif filename.endswith('.txt'):
-            resume_content = resume.read().decode('utf-8')
-        else:
-            return {
-                "success": False,
-                "error": "Unsupported file format. Please upload a PDF or TXT file."
-            }
+        try:
+            if filename.endswith(".pdf"):
+                resume_content = extract_text_from_pdf(resume)
+            elif filename.endswith(".txt"):
+                resume_content = resume.read().decode("utf-8")
+            else:
+                return {
+                    "success": False,
+                    "error": "Unsupported file format. Please upload a PDF or TXT file.",
+                }
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
 
         # Parse job links
         try:
             job_links_parsed = json.loads(job_links)
         except json.JSONDecodeError:
-            return {
-                "success": False,
-                "error": "Invalid job links format"
-            }
+            return {"success": False, "error": "Invalid job links format"}
 
-        # Create prompt
-        prompt = f"""
-        You are a professional resume analyzer. Analyze this resume content and provide detailed results.
+        # Generate AI analysis
+        analysis_result = generate_analysis(resume_content, job_links_parsed)
 
-        Resume content to analyze:
-        {resume_content}
+        if not analysis_result["success"]:
+            return analysis_result
 
-        Job links to analyze against:
-        {job_links_parsed}
-
-        IMPORTANT INSTRUCTIONS:
-        1. Always provide at least 3 recommendations, even for high matches, focusing on ways to strengthen the application
-        2. For matches above 75%, provide recommendations to excel in the role
-        3. Recommendations should be specific and actionable
-        4. Match percentage should be based on both technical skills and overall profile fit
-
-        Return ONLY a JSON object with this exact structure:
-        {{
-            "jobs": [
-                {{
-                    "job_link": "<job url>",
-                    "match_percentage": <number 0-100>,
-                    "matching_skills": [<list of matching skills>],
-                    "missing_skills": [<list of missing skills>],
-                    "recommendations": [
-                        "Specific recommendation 1",
-                        "Specific recommendation 2",
-                        "Specific recommendation 3"
-                    ]
-                }}
-            ]
-        }}
-        """
-
-        # Generate response
-        model = genai.GenerativeModel("gemini-pro")
-        model_config = {
-            "temperature": 0.7,  # Increased for more creative recommendations
-            "top_p": 0.8,
-            "top_k": 40,
-            "max_output_tokens": 2048
-        }
-        response = model.generate_content(prompt, generation_config=model_config)
-
-        if not response or not response.text:
-            return {
-                "success": False,
-                "error": "No response from AI model"
-            }
-
-        try:
-            # Extract and parse JSON
-            json_str = re.search(r'({[\s\S]*})', response.text)
-            if not json_str:
-                return {
-                    "success": False,
-                    "error": "Invalid response format"
-                }
-
-            analysis = json.loads(json_str.group(1))
-
-            # Validate response structure and ensure recommendations
-            if not isinstance(analysis, dict) or "jobs" not in analysis:
-                return {
-                    "success": False,
-                    "error": "Invalid response structure"
-                }
-
-            # Ensure each job has recommendations
-            for job in analysis["jobs"]:
-                if not job.get("recommendations"):
-                    job["recommendations"] = [
-                        "Highlight relevant project achievements",
-                        "Quantify your impact with metrics",
-                        "Add specific examples of team leadership"
-                    ]
-
-            return {
-                "success": True,
-                "results": analysis["jobs"]
-            }
-
-        except json.JSONDecodeError as e:
-            print("Failed to parse JSON:", response.text)  # Debug print
-            return {
-                "success": False,
-                "error": f"Error parsing AI response: {str(e)}"
-            }
+        return {"success": True, "results": analysis_result["jobs"]}
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error analyzing resume: {str(e)}"
-        }
+        return {"success": False, "error": f"Error analyzing resume: {str(e)}"}
+
+
+def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[bool, list, str]]:
+    """
+    Generate AI analysis for the resume and job links.
+
+    Args:
+        resume_content: Text content of the resume
+        job_links: List of job links to analyze against
+
+    Returns:
+        dict: Analysis results from the AI model
+    """
+    prompt = f"""
+    You are a professional resume analyzer. Analyze this resume content and provide detailed results.
+
+    Resume content to analyze:
+    {resume_content}
+
+    Job links to analyze against:
+    {job_links}
+
+    IMPORTANT INSTRUCTIONS:
+    1. Always provide at least 3 recommendations, even for high matches
+    2. For matches above 75%, provide recommendations to excel in the role
+    3. Recommendations should be specific and actionable
+    4. Match percentage should be based on both technical skills and overall fit
+
+    Return ONLY a JSON object with this exact structure:
+    {{
+        "jobs": [
+            {{
+                "job_link": "<job url>",
+                "match_percentage": <number 0-100>,
+                "matching_skills": [<list of matching skills>],
+                "missing_skills": [<list of missing skills>],
+                "recommendations": [
+                    "Specific recommendation 1",
+                    "Specific recommendation 2",
+                    "Specific recommendation 3"
+                ]
+            }}
+        ]
+    }}
+    """
+
+    model = genai.GenerativeModel("gemini-pro")
+    model_config = {
+        "temperature": 0.7,
+        "top_p": 0.8,
+        "top_k": 40,
+        "max_output_tokens": 2048,
+    }
+
+    try:
+        response = model.generate_content(prompt, generation_config=model_config)
+        if not response or not response.text:
+            return {"success": False, "error": "No response from AI model"}
+
+        # Extract and parse JSON
+        json_str = re.search(r"({[\s\S]*})", response.text)
+        if not json_str:
+            return {"success": False, "error": "Invalid response format"}
+
+        analysis = json.loads(json_str.group(1))
+
+        # Validate response structure
+        if not isinstance(analysis, dict) or "jobs" not in analysis:
+            return {"success": False, "error": "Invalid response structure"}
+
+        # Ensure recommendations
+        for job in analysis["jobs"]:
+            if not job.get("recommendations"):
+                job["recommendations"] = [
+                    "Highlight relevant project achievements",
+                    "Quantify your impact with metrics",
+                    "Add specific examples of team leadership",
+                ]
+
+        return {"success": True, "jobs": analysis["jobs"]}
+
+    except Exception as e:
+        return {"success": False, "error": f"Error generating analysis: {str(e)}"}

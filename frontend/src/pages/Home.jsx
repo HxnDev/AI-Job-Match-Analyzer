@@ -8,109 +8,106 @@ import JobResults from '../components/JobResults';
 import axios from 'axios';
 
 const Home = () => {
-    const [resumeFile, setResumeFile] = useState(null);
-    const [resumeText, setResumeText] = useState('');
-    const [jobLinks, setJobLinks] = useState([]);
-    const [jobResults, setJobResults] = useState([]);
-    const [loading, handlers] = useDisclosure(false);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeText, setResumeText] = useState('');
+  const [jobLinks, setJobLinks] = useState([]);
+  const [jobResults, setJobResults] = useState([]);
+  const [loading, handlers] = useDisclosure(false);
 
-    const handleAnalyze = async () => {
-        if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
-            notifications.show({
-                title: 'Missing Information',
-                message: 'Please provide a resume and at least one job link',
-                color: 'red'
-            });
-            return;
-        }
+  const handleAnalyze = async () => {
+    if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
+      notifications.show({
+        title: 'Missing Information',
+        message: 'Please provide a resume and at least one job link',
+        color: 'red',
+      });
+      return;
+    }
 
-        handlers.open();
-        const formData = new FormData();
+    handlers.open();
+    const formData = new FormData();
 
-        // Handle resume input
-        if (resumeFile) {
-            formData.append('resume', resumeFile);
-        } else if (resumeText) {
-            // Create a text file from the resume text
-            const textFile = new Blob([resumeText], { type: 'text/plain' });
-            formData.append('resume', textFile, 'resume.txt');
-        }
+    // Handle resume input
+    if (resumeFile) {
+      formData.append('resume', resumeFile);
+    } else if (resumeText) {
+      // Create a text file from the resume text
+      const textFile = new Blob([resumeText], { type: 'text/plain' });
+      formData.append('resume', textFile, 'resume.txt');
+    }
 
-        // Format job links
-        formData.append('job_links', JSON.stringify(jobLinks));
+    // Format job links
+    formData.append('job_links', JSON.stringify(jobLinks));
 
-        try {
-            const response = await axios.post('http://localhost:5050/api/analyze', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+    try {
+      const response = await axios.post('http://localhost:5050/api/analyze', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-            if (response.data.success) {
-                setJobResults(response.data.results || []);
-                notifications.show({
-                    title: 'Success',
-                    message: 'Resume analysis completed',
-                    color: 'green'
-                });
-            } else {
-                throw new Error(response.data.error || 'Analysis failed');
-            }
-        } catch (error) {
-            console.error("Error analyzing resume:", error);
-            notifications.show({
-                title: 'Error',
-                message: error.response?.data?.error || 'Error analyzing resume. Please try again.',
-                color: 'red'
-            });
-        } finally {
-            handlers.close();
-        }
-    };
+      if (response.data.success) {
+        setJobResults(response.data.results || []);
+        notifications.show({
+          title: 'Success',
+          message: 'Resume analysis completed',
+          color: 'green',
+        });
+      } else {
+        throw new Error(response.data.error || 'Analysis failed');
+      }
+    } catch (error) {
+      console.error('Error analyzing resume:', error);
+      notifications.show({
+        title: 'Error',
+        message: error.response?.data?.error || 'Error analyzing resume. Please try again.',
+        color: 'red',
+      });
+    } finally {
+      handlers.close();
+    }
+  };
 
-    return (
-        <Container size="lg" py="xl">
-            <Stack spacing="xl">
-                <Title order={1} align="center" color="blue">
-                    Job Match Analyzer
-                </Title>
+  return (
+    <Container size="lg" py="xl">
+      <Stack spacing="xl">
+        <Title order={1} align="center" color="blue">
+          Job Match Analyzer
+        </Title>
 
-                <Text size="lg" color="dimmed" align="center">
-                    Upload your resume and add job links to analyze your match score
-                </Text>
+        <Text size="lg" color="dimmed" align="center">
+          Upload your resume and add job links to analyze your match score
+        </Text>
 
-                <Paper shadow="sm" radius="md" p="xl" withBorder>
-                    <Stack spacing="md">
-                        <ResumeUpload
-                            setResumeFile={setResumeFile}
-                            resumeText={resumeText}
-                            setResumeText={setResumeText}
-                        />
+        <Paper shadow="sm" radius="md" p="xl" withBorder>
+          <Stack spacing="md">
+            <ResumeUpload
+              setResumeFile={setResumeFile}
+              resumeText={resumeText}
+              setResumeText={setResumeText}
+            />
 
-                        <JobInput
-                            jobLinks={jobLinks}
-                            setJobLinks={setJobLinks}
-                        />
+            <JobInput jobLinks={jobLinks} setJobLinks={setJobLinks} />
 
-                        <Button
-                            onClick={handleAnalyze}
-                            disabled={(!resumeFile && !resumeText) || jobLinks.length === 0}
-                            fullWidth
-                            size="md"
-                            color="blue"
-                        >
-                            Analyze Resume
-                        </Button>
-                    </Stack>
-                </Paper>
+            <Button
+              onClick={handleAnalyze}
+              disabled={(!resumeFile && !resumeText) || jobLinks.length === 0}
+              fullWidth
+              size="md"
+              color="blue"
+            >
+              Analyze Resume
+            </Button>
+          </Stack>
+        </Paper>
 
-                <div style={{ position: 'relative' }}>
-                    <LoadingOverlay visible={loading} overlayBlur={2} />
-                    <JobResults results={jobResults} />
-                </div>
-            </Stack>
-        </Container>
-    );
+        <div style={{ position: 'relative' }}>
+          <LoadingOverlay visible={loading} overlayBlur={2} />
+          <JobResults results={jobResults} />
+        </div>
+      </Stack>
+    </Container>
+  );
 };
 
 export default Home;

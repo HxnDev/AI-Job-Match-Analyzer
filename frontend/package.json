@@ -4,7 +4,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "format": "prettier --write 'src/**/*.{js,jsx}'",
+    "format:check": "prettier --check 'src/**/*.{js,jsx}'",
+    "lint": "eslint 'src/**/*.{js,jsx}'",
+    "check": "npm run format:check && npm run lint"
   },
   "dependencies": {
     "@mantine/core": "^6.0.22",
@@ -17,7 +21,12 @@
     "react-router-dom": "^6.8.0"
   },
   "devDependencies": {
-    "vite": "^4.0.0",
-    "@vitejs/plugin-react": "^3.0.0"
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "prettier": "^3.2.5",
+    "vite": "^5.1.4"
   }
 }

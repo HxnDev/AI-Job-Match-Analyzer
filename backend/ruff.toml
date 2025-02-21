@@ -1,0 +1,30 @@
+# Target Python version
+target-version = "py311"
+
+# Files to include/exclude
+include = ["app/**/*.py"]
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+]
+
+# Line length settings
+line-length = 150
+
+# Cache configuration
+cache-dir = ".ruff_cache"
+
+[lint]
+select = ["E", "F", "I"]
+
+[lint.isort]
+force-single-line = false
+lines-after-imports = 2
+
+[format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

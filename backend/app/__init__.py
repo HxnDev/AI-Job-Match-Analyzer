@@ -1,10 +1,24 @@
+"""
+Flask application factory and configuration module.
+This module initializes the Flask application with necessary configurations.
+"""
+
+import os
+from importlib import import_module
+
+import google.generativeai as genai
+from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
-import os
-from dotenv import load_dotenv
-import google.generativeai as genai
 
-def create_app():
+
+def create_app() -> Flask:
+    """
+    Create and configure the Flask application.
+
+    Returns:
+        Flask: Configured Flask application instance
+    """
     # Load environment variables
     load_dotenv()
 
@@ -20,7 +34,8 @@ def create_app():
     genai.configure(api_key=api_key)
 
     # Import and register blueprints
-    from .routes import api_bp
-    app.register_blueprint(api_bp)
+    # Using import_module to avoid circular imports
+    routes = import_module(".routes", package="app")
+    app.register_blueprint(routes.api_bp)
 
     return app
