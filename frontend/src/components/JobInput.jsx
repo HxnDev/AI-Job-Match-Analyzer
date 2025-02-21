@@ -1,57 +1,26 @@
-import React, { useState } from 'react';
-import { Textarea, Group, Badge, Stack } from '@mantine/core';
+import React, { useState } from "react";
 
-const JobInput = ({ jobLinks, setJobLinks }) => {
-    const [inputValue, setInputValue] = useState('');
+function JobInput({ jobLinks, setJobLinks }) {
+    const [jobUrl, setJobUrl] = useState("");
 
-    const parseLinks = (input) => {
-        const separators = /[,\n\t\s]+/;
-        const links = input.split(separators).map(link => link.trim()).filter(link => link !== '');
-        return links;
-    };
-
-    const handleInputChange = (e) => {
-        const newInput = e.currentTarget.value;
-        const parsed = parseLinks(newInput);
-        if (parsed.length > 0) {
-            const uniqueLinks = parsed.filter(link => !jobLinks.includes(link));
-            if (uniqueLinks.length > 0) {
-                setJobLinks([...jobLinks, ...uniqueLinks]);
-                setInputValue('');
-            } else {
-                setInputValue(newInput);
-            }
-        } else {
-            setInputValue(newInput);
+    const handleAddJob = () => {
+        if (jobUrl.trim() !== "") {
+            setJobLinks([...jobLinks, jobUrl]);
+            setJobUrl("");
         }
     };
 
-    const handleRemoveLink = (linkToRemove) => {
-        const updatedLinks = jobLinks.filter(link => link !== linkToRemove);
-        setJobLinks(updatedLinks);
-    };
-
     return (
-        <Stack mt="md">
-            <Textarea
-                value={inputValue}
-                onChange={handleInputChange}
-                placeholder="Enter job posting links separated by comma, space, tab or return"
-                label="Job Posting Links"
-                autosize
-                minRows={2}
+        <div>
+            <input
+                type="text"
+                value={jobUrl}
+                onChange={(e) => setJobUrl(e.target.value)}
+                placeholder="Enter job posting URL"
             />
-            {jobLinks.length > 0 && (
-                <Group mt="xs" spacing="xs">
-                    {jobLinks.map((link, index) => (
-                        <Badge key={index} variant="outline" onClick={() => handleRemoveLink(link)} style={{ cursor: 'pointer' }}>
-                            {link} &times;
-                        </Badge>
-                    ))}
-                </Group>
-            )}
-        </Stack>
+            <button onClick={handleAddJob}>Add Job</button>
+        </div>
     );
-};
+}
 
 export default JobInput;

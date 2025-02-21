@@ -1,31 +1,31 @@
-import React from 'react';
-import { Table, Button } from '@mantine/core';
+import React from "react";
 
-const JobResults = ({ results, onGenerateCoverLetter }) => {
-    const rows = results.map((result, index) => (
-        <tr key={index}>
-            <td><a href={result.jobLink} target="_blank" rel="noreferrer">{result.jobLink}</a></td>
-            <td>{result.aiScore !== null ? result.aiScore : 'N/A'}</td>
-            <td>{result.aiComments}</td>
-            <td>
-                <Button onClick={() => onGenerateCoverLetter(result.jobLink)}>Generate Cover Letter</Button>
-            </td>
-        </tr>
-    ));
+function JobResults({ results }) {
+    if (!results) return null;
 
     return (
-        <Table highlightOnHover mt="md">
-            <thead>
-            <tr>
-                <th>Job Link</th>
-                <th>AI Score</th>
-                <th>AI Comments</th>
-                <th>Cover Letter</th>
-            </tr>
-            </thead>
-            <tbody>{rows}</tbody>
-        </Table>
+        <div>
+            <h2>Analysis Results</h2>
+            <table border="1">
+                <thead>
+                <tr>
+                    <th>Job Link</th>
+                    <th>AI Score</th>
+                    <th>AI Comments</th>
+                </tr>
+                </thead>
+                <tbody>
+                {results.map((job, index) => (
+                    <tr key={index}>
+                        <td>{job.job_link}</td>
+                        <td>{job.score}</td>
+                        <td>{job.comment}</td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+        </div>
     );
-};
+}
 
 export default JobResults;

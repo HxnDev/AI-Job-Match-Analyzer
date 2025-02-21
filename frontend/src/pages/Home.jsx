@@ -1,65 +1,42 @@
-import React, { useState } from 'react';
-import { Container, Title, Button, Textarea, FileInput, Group, Table, Modal, Stack } from '@mantine/core';
-import ResumeUpload from '../components/ResumeUpload';
-import JobInput from '../components/JobInput';
-import JobResults from '../components/JobResults';
-import axios from 'axios';
+import React, { useState } from "react";
+import JobInput from "../components/JobInput";
+import JobResults from "../components/JobResults";
+import ResumeUpload from "../components/ResumeUpload";
+import axios from "axios";
 
-const Home = () => {
-    const [resumeText, setResumeText] = useState('');
+function Home() {
     const [jobLinks, setJobLinks] = useState([]);
-    const [analysisResults, setAnalysisResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [coverLetterModal, setCoverLetterModal] = useState({ open: false, coverLetter: '' });
+    const [resumeFile, setResumeFile] = useState(null);
+    const [analysisResults, setAnalysisResults] = useState(null);
 
     const handleAnalyze = async () => {
-        setLoading(true);
-        try {
-            const response = await axios.post('http://localhost:5000/api/analyze', {
-                resume: resumeText,
-                jobLinks: jobLinks
-            });
-            setAnalysisResults(response.data.results);
-        } catch (error) {
-            console.error('Error analyzing resume:', error);
+        if (!resumeFile || jobLinks.length === 0) {
+            alert("Please upload a resume and add job links!");
+            return;
         }
-        setLoading(false);
-    };
 
-    const handleGenerateCoverLetter = async (jobLink) => {
+        const formData = new FormData();
+        formData.append("resume", resumeFile);
+        formData.append("jobs", JSON.stringify(jobLinks));
+
         try {
-            const response = await axios.post('http://localhost:5000/api/cover-letter', {
-                resume: resumeText,
-                jobLink: jobLink
-            });
-            setCoverLetterModal({ open: true, coverLetter: response.data.coverLetter });
+            const response = await axios.post("http://localhost:5001/api/analyze", formData);
+            setAnalysisResults(response.data);
         } catch (error) {
-            console.error('Error generating cover letter:', error);
+            console.error("Error analyzing resume:", error);
+            alert("Failed to analyze resume");
         }
     };
 
     return (
-        <Container>
-            <Title align="center" my="md">Job Match Analyzer</Title>
-            <Stack spacing="lg">
-                <ResumeUpload resumeText={resumeText} setResumeText={setResumeText} />
-                <JobInput jobLinks={jobLinks} setJobLinks={setJobLinks} />
-                <Group position="center" mt="md">
-                    <Button onClick={handleAnalyze} loading={loading}>Analyze Resume</Button>
-                </Group>
-            </Stack>
-            {analysisResults.length > 0 && (
-                <JobResults results={analysisResults} onGenerateCoverLetter={handleGenerateCoverLetter} />
-            )}
-            <Modal
-                opened={coverLetterModal.open}
-                onClose={() => setCoverLetterModal({ ...coverLetterModal, open: false })}
-                title="Generated Cover Letter"
-            >
-                <Textarea value={coverLetterModal.coverLetter} readOnly autosize minRows={6} />
-            </Modal>
-        </Container>
+        <div>
+            <h1>Job Match Analyzer</h1>
+            <ResumeUpload setResumeFile={setResumeFile} />
+            <JobInput jobLinks={jobLinks} setJobLinks={setJobLinks} />
+            <button onClick={handleAnalyze}>Analyze Resume</button>
+            <JobResults results={analysisResults} />
+        </div>
     );
-};
+}
 
 export default Home;
