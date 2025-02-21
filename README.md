@@ -34,16 +34,16 @@ frontend/
 │   ├── favicon.ico
 │   ├── manifest.json
 ├── src/
-│   ├── components/     # Reusable components
+│   ├── components/               # Reusable components
 │   │   ├── JobInput.jsx
 │   │   ├── JobResults.jsx
 │   │   └── ResumeUpload.jsx
 │   ├── pages/
-│   │   └── Home.jsx   # Main page component
-│   ├── App.jsx        # App root component
-│   └── index.jsx      # Entry point
-├── .eslintrc.js       # ESLint configuration
-├── .prettierrc        # Prettier configuration
+│   │   └── Home.jsx              # Main page component
+│   ├── App.jsx                   # App root component
+│   └── index.jsx                 # Entry point
+├── .eslintrc.js                  # ESLint configuration
+├── .prettierrc                   # Prettier configuration
 ├── index.html
 ├── package.json
 └── vite.config.js
