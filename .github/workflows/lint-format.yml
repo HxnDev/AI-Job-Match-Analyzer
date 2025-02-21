@@ -1,0 +1,58 @@
+name: Lint & Format Check (Backend & Frontend)
+
+on:
+  pull_request:
+    branches:
+      - main  # Ensure checks run on PRs to main
+
+jobs:
+  backend-lint-format:
+    name: Backend - Python Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend  # Set working directory for Python job
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          pip install black flake8
+
+      - name: Run Black (Formatting Check)
+        run: black --check .
+
+      - name: Run Flake8 (Linting Check)
+        run: flake8 .
+
+  frontend-lint-format:
+    name: Frontend - React.js Lint & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend  # Set working directory for React job
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run ESLint (Linting)
+        run: npx eslint .
+
+      - name: Run Prettier (Formatting)
+        run: npx prettier --check .
