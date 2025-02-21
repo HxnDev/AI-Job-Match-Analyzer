@@ -5,14 +5,6 @@ from PyPDF2 import PdfReader
 import io
 import re
 
-def extract_json_from_response(text: str) -> str:
-    """Extract JSON from response text"""
-    # Try to find JSON pattern
-    json_match = re.search(r'({[\s\S]*})', text)
-    if json_match:
-        return json_match.group(1)
-    return text
-
 def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
     """Extract text from PDF file"""
     try:
@@ -53,20 +45,33 @@ def analyze_resume(resume: BinaryIO, job_links: str) -> dict:
 
         # Create prompt
         prompt = f"""
-        You are a resume analysis assistant. Your task is to respond ONLY with a JSON object, no other text.
+        You are a professional resume analyzer. Analyze this resume content and provide detailed results.
 
-        Resume content: {resume_content}
-        Job links: {job_links_parsed}
+        Resume content to analyze:
+        {resume_content}
 
-        Return a JSON object with this exact structure, nothing else:
+        Job links to analyze against:
+        {job_links_parsed}
+
+        IMPORTANT INSTRUCTIONS:
+        1. Always provide at least 3 recommendations, even for high matches, focusing on ways to strengthen the application
+        2. For matches above 75%, provide recommendations to excel in the role
+        3. Recommendations should be specific and actionable
+        4. Match percentage should be based on both technical skills and overall profile fit
+
+        Return ONLY a JSON object with this exact structure:
         {{
             "jobs": [
                 {{
-                    "job_link": <url>,
+                    "job_link": "<job url>",
                     "match_percentage": <number 0-100>,
-                    "matching_skills": [<skills found in resume>],
-                    "missing_skills": [<required skills not in resume>],
-                    "recommendations": [<specific improvements>]
+                    "matching_skills": [<list of matching skills>],
+                    "missing_skills": [<list of missing skills>],
+                    "recommendations": [
+                        "Specific recommendation 1",
+                        "Specific recommendation 2",
+                        "Specific recommendation 3"
+                    ]
                 }}
             ]
         }}
@@ -75,9 +80,10 @@ def analyze_resume(resume: BinaryIO, job_links: str) -> dict:
         # Generate response
         model = genai.GenerativeModel("gemini-pro")
         model_config = {
-            "temperature": 0.1,  # Lower temperature for more consistent JSON
-            "top_p": 0.1,
-            "top_k": 1
+            "temperature": 0.7,  # Increased for more creative recommendations
+            "top_p": 0.8,
+            "top_k": 40,
+            "max_output_tokens": 2048
         }
         response = model.generate_content(prompt, generation_config=model_config)
 
@@ -89,17 +95,30 @@ def analyze_resume(resume: BinaryIO, job_links: str) -> dict:
 
         try:
             # Extract and parse JSON
-            json_str = extract_json_from_response(response.text)
-            print("Extracted JSON:", json_str)  # Debug print
+            json_str = re.search(r'({[\s\S]*})', response.text)
+            if not json_str:
+                return {
+                    "success": False,
+                    "error": "Invalid response format"
+                }
 
-            analysis = json.loads(json_str)
+            analysis = json.loads(json_str.group(1))
 
-            # Validate response structure
+            # Validate response structure and ensure recommendations
             if not isinstance(analysis, dict) or "jobs" not in analysis:
                 return {
                     "success": False,
-                    "error": "Invalid response format from AI model"
+                    "error": "Invalid response structure"
                 }
+
+            # Ensure each job has recommendations
+            for job in analysis["jobs"]:
+                if not job.get("recommendations"):
+                    job["recommendations"] = [
+                        "Highlight relevant project achievements",
+                        "Quantify your impact with metrics",
+                        "Add specific examples of team leadership"
+                    ]
 
             return {
                 "success": True,

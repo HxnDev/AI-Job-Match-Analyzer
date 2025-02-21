@@ -1,39 +1,62 @@
 import google.generativeai as genai
+from typing import Dict
 
-def generate_cover_letter(resume_text: str, job_description: str) -> str:
+def generate_cover_letter(job_link: str) -> Dict[str, any]:
     """
-    Generate a cover letter based on resume and job description
+    Generate a cover letter based on the job link context
 
     Args:
-        resume_text: The text content of the resume
-        job_description: The job description text
+        job_link: URL of the job posting
 
     Returns:
-        str: Generated cover letter or error message
+        dict: Contains success status and either cover letter or error message
     """
     try:
+        # Create prompt for cover letter generation
         prompt = f"""
-        Create a professional cover letter based on this resume:
-        {resume_text}
+        You are a professional cover letter writer. Create a compelling cover letter for a software engineering position.
 
-        For this job description:
-        {job_description}
+        The position is for this job posting: {job_link}
 
-        The cover letter should:
-        1. Be professionally formatted
-        2. Highlight relevant experience and skills
-        3. Show enthusiasm for the role
-        4. Include specific examples from the resume that match the job requirements
-        5. Be concise but comprehensive
+        Write a professional cover letter that:
+        1. Has a formal business letter format
+        2. Shows enthusiasm for the role and company
+        3. Mentions key software engineering skills (full-stack development, Java, Python, React, etc.)
+        4. Highlights leadership and team collaboration experience
+        5. Demonstrates problem-solving abilities and technical expertise
+        6. Includes:
+           - Professional greeting
+           - 3-4 strong paragraphs
+           - Professional closing
+           - Proper spacing and formatting
+
+        Keep the tone professional but enthusiastic. Focus on full-stack development, software architecture, 
+        and team leadership capabilities.
         """
 
+        # Generate cover letter
         model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
+        model_config = {
+            "temperature": 0.7,
+            "top_p": 0.8,
+            "top_k": 40,
+            "max_output_tokens": 2048
+        }
+        response = model.generate_content(prompt, generation_config=model_config)
 
         if response and response.text:
-            return response.text
+            return {
+                "success": True,
+                "cover_letter": response.text.strip()
+            }
         else:
-            return "Error: Unable to generate cover letter"
+            return {
+                "success": False,
+                "error": "Failed to generate cover letter"
+            }
 
     except Exception as e:
-        return f"Error generating cover letter: {str(e)}"
+        return {
+            "success": False,
+            "error": f"Error generating cover letter: {str(e)}"
+        }

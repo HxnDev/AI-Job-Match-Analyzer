@@ -7,10 +7,7 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 @api_bp.route('/analyze', methods=['POST'])
 def analyze():
-    """
-    Endpoint to analyze resume against job descriptions
-    """
-    # Validate input
+    """Endpoint to analyze resume against job descriptions"""
     if 'resume' not in request.files:
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
@@ -20,14 +17,12 @@ def analyze():
     resume = request.files['resume']
     job_links = request.form['job_links']
 
-    # Validate file type
-    if not resume.filename.endswith(('.pdf', '.doc', '.docx', '.txt')):
+    if not resume.filename.endswith(('.pdf', '.txt')):
         return jsonify({
             "success": False,
-            "error": "Invalid file format. Please upload PDF, DOC, DOCX, or TXT"
+            "error": "Invalid file format. Please upload PDF or TXT"
         }), 400
 
-    # Analyze resume
     result = analyze_resume(resume, job_links)
 
     if result.get("success", False):
@@ -37,22 +32,18 @@ def analyze():
 
 @api_bp.route('/cover-letter', methods=['POST'])
 def generate_letter():
-    """
-    Endpoint to generate a cover letter
-    """
+    """Endpoint to generate a cover letter"""
     data = request.json
-    if not data or 'resume' not in data or 'job_description' not in data:
+    if not data or 'job_link' not in data:
         return jsonify({
             "success": False,
-            "error": "Missing resume or job description"
+            "error": "Missing job link"
         }), 400
 
-    cover_letter = generate_cover_letter(data['resume'], data['job_description'])
-    return jsonify({"success": True, "cover_letter": cover_letter})
+    result = generate_cover_letter(data['job_link'])
+    return jsonify(result), 200 if result.get("success", False) else 400
 
 @api_bp.route('/health', methods=['GET'])
 def health_check():
-    """
-    Health check endpoint
-    """
+    """Health check endpoint"""
     return jsonify({"status": "healthy"}), 200
