@@ -31,12 +31,10 @@ const Home = () => {
     if (resumeFile) {
       formData.append('resume', resumeFile);
     } else if (resumeText) {
-      // Create a text file from the resume text
       const textFile = new Blob([resumeText], { type: 'text/plain' });
       formData.append('resume', textFile, 'resume.txt');
     }
 
-    // Format job links
     formData.append('job_links', JSON.stringify(jobLinks));
 
     try {
@@ -80,7 +78,8 @@ const Home = () => {
         </Text>
 
         <Paper shadow="sm" radius="md" p="xl" withBorder>
-          <Stack spacing="md">
+          <Stack spacing="md" style={{ position: 'relative' }}>
+            <LoadingOverlay visible={loading} overlayBlur={2} />
             <ResumeUpload
               setResumeFile={setResumeFile}
               resumeText={resumeText}
@@ -92,19 +91,17 @@ const Home = () => {
             <Button
               onClick={handleAnalyze}
               disabled={(!resumeFile && !resumeText) || jobLinks.length === 0}
+              loading={loading}
               fullWidth
               size="md"
               color="blue"
             >
-              Analyze Resume
+              {loading ? 'Analyzing...' : 'Analyze Resume'}
             </Button>
           </Stack>
         </Paper>
 
-        <div style={{ position: 'relative' }}>
-          <LoadingOverlay visible={loading} overlayBlur={2} />
-          <JobResults results={jobResults} />
-        </div>
+        <JobResults results={jobResults} />
       </Stack>
     </Container>
   );
