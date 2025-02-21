@@ -6,15 +6,17 @@ import axios from 'axios';
 const JobResults = ({ results }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [opened, { open, close }] = useDisclosure(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingJobs, setLoadingJobs] = useState({}); // Track loading state per job
 
   if (!results || results.length === 0) return null;
 
   const handleGenerateCoverLetter = async (jobLink) => {
-    setLoading(true);
+    // Set loading state for specific job
+    setLoadingJobs((prev) => ({ ...prev, [jobLink]: true }));
+
     try {
       const response = await axios.post('http://localhost:5050/api/cover-letter', {
-        resume: null, // We'll pass this from the parent
+        resume: null,
         job_link: jobLink,
       });
 
@@ -28,7 +30,8 @@ const JobResults = ({ results }) => {
       console.error('Error generating cover letter:', error);
       alert(error.response?.data?.error || 'Error generating cover letter. Please try again.');
     } finally {
-      setLoading(false);
+      // Clear loading state for specific job
+      setLoadingJobs((prev) => ({ ...prev, [jobLink]: false }));
     }
   };
 
@@ -122,7 +125,7 @@ const JobResults = ({ results }) => {
             <Button
               variant="light"
               onClick={() => handleGenerateCoverLetter(job.job_link)}
-              loading={loading}
+              loading={loadingJobs[job.job_link]} // Use job-specific loading state
               fullWidth
               mt="sm"
             >
