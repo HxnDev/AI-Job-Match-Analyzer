@@ -1,105 +1,183 @@
-# Open-Source Job Match Analyzer
+# Job Match Analyzer
 
-## Project Overview
-
-This is an open-source tool that helps job seekers analyze job descriptions against their resumes and generate AI-powered cover letters. The tool runs locally and supports multiple job posting links at once.
+A powerful open-source tool that helps job seekers analyze their resumes against job descriptions and generate AI-powered cover letters. Built with React and Flask, it leverages Google's Gemini AI for intelligent analysis and runs completely locally.
 
 ## Features
-
-- Upload or paste resume
-- Enter multiple job posting links
-- AI-based job matching score and skill gap analysis
-- Generate AI-powered cover letters
-- Runs locally with a simple React frontend and FastAPI backend
+- 📄 Resume Analysis: Upload PDF/TXT files or paste resume text directly
+- 🔗 Multiple Job Links: Analyze your resume against multiple job postings simultaneously
+- 🎯 Smart Matching: AI-powered skill matching and gap analysis
+- ✍️ Cover Letters: Generate tailored cover letters for each job
+- 🔒 Privacy-First: Runs locally, your data stays on your machine
+- 💰 Cost-Effective: Uses Gemini AI (free tier available)
 
 ## Tech Stack
+### Frontend
+- React 18.2
+- Mantine UI 6.0.22 (for components and styling)
+- Vite (for development and building)
+- Axios (for API calls)
 
-- **Frontend:** React (with Tailwind CSS for styling)
-- **Backend:** FastAPI (Python)
-- **AI Model:** OpenAI's GPT-4 (or DeepSeek as an alternative)
-- **Web Scraping:** BeautifulSoup, Playwright (for extracting job descriptions)
+### Backend
+- Flask 2.2.5
+- Google Generative AI (Gemini)
+- PyPDF2 (for PDF processing)
+- Beautiful Soup 4 (for web scraping)
 
----
+## Prerequisites
+- Node.js (v14 or higher)
+- Python 3.11 or higher
+- Google Cloud Console account for Gemini API key
 
-## Repository Setup Instructions (Using GitHub Desktop)
+## Getting Started
 
-### 1. Create a New Repository on GitHub
-
-1. Open **GitHub Desktop**.
-2. Click **File > New Repository**.
-3. Enter **Repository Name** (e.g., `job-match-analyzer`).
-4. Set **Local Path** to a folder on your system.
-5. Set **Git Ignore** to `Python`.
-6. Click **Create Repository**.
-7. Click **Publish Repository** to push it to GitHub.
-
-### 2. Clone Repository (if already created on GitHub)
-
-1. Open **GitHub Desktop**.
-2. Click **File > Clone Repository**.
-3. Select your GitHub repo and click **Clone**.
-
-### 3. Set Up Project Structure
-
-```plaintext
-job-match-analyzer/
-│── backend/              # FastAPI Backend
-│   ├── main.py           # API Endpoints
-│   ├── requirements.txt  # Dependencies
-│   ├── .env              # API Keys (ignored in .gitignore)
-│── frontend/             # React Frontend
-│   ├── src/
-│   │   ├── App.js
-│   │   ├── components/
-│── README.md            # Project Documentation
-│── .gitignore           # Ignore environment files
+### 1. Clone the Repository
+```bash
+git clone https://github.com/HxnDev/Job-Match-Analyzer.git
+cd Job-Match-Analyzer
 ```
 
-### 4. Install Dependencies
-
-#### Backend (FastAPI)
-
+### 2. Set Up Backend
 ```bash
 cd backend
+
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
+# Create .env file
+echo "GEMINI_API_KEY=your_api_key_here" > .env
 ```
 
-#### Frontend (React)
-
+### 3. Set Up Frontend
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
+
+# Start development server
+npm run dev
 ```
 
-### 5. Run the Project
+### 4. Get Gemini API Key
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project
+3. Enable the Gemini API
+4. Create API credentials
+5. Copy the API key to your backend `.env` file
 
-#### Start Backend
-
+### 5. Run the Application
 ```bash
+# Terminal 1 (Backend)
 cd backend
-uvicorn main:app --reload
-```
+python -m app.main
 
-#### Start Frontend
-
-```bash
+# Terminal 2 (Frontend)
 cd frontend
-npm start
+npm run dev
 ```
+
+Visit `http://localhost:5173` to use the application.
+
+## Project Structure
+
+### Frontend Structure
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── JobInput.jsx      # Job URL input component
+│   │   ├── JobResults.jsx    # Analysis results display
+│   │   └── ResumeUpload.jsx  # Resume upload/paste component
+│   ├── pages/
+│   │   └── Home.jsx          # Main page component
+│   ├── App.jsx              # App root component
+│   └── index.jsx            # Entry point
+├── package.json
+└── vite.config.js
+```
+
+### Backend Structure
+```
+backend/
+├── app/
+│   ├── __init__.py          # App initialization
+│   ├── main.py             # Entry point
+│   ├── routes.py           # API routes
+│   ├── resume_analyzer.py  # Resume analysis logic
+│   ├── cover_letter.py     # Cover letter generation
+│   └── job_scraper.py     # Job description scraping
+└── requirements.txt
+```
+
+## API Documentation
+
+### POST /api/analyze
+Analyzes resume against job descriptions.
+- Request: Multipart form data
+  - `resume`: PDF/TXT file
+  - `job_links`: JSON string of URLs
+- Response: JSON with analysis results
+
+### POST /api/cover-letter
+Generates a cover letter.
+- Request: JSON
+  - `job_link`: String
+- Response: JSON with generated cover letter
 
 ## Contributing
 
-Fork the repository.
-Clone your fork and create a new branch.
-Make changes and push to your branch.
-Open a pull request on GitHub.
+### Commit Message Format
+```
+type(scope): description
+
+Types:
+- feat: New feature
+- fix: Bug fix
+- docs: Documentation
+- style: Formatting
+- refactor: Code restructuring
+- test: Tests
+- chore: Maintenance
+
+Example:
+feat(frontend): add job link validation
+```
+
+### Pull Request Process
+1. Create a feature branch: `feature/description` or `fix/description`
+2. Follow commit message format
+3. Update documentation if needed
+4. Ensure all tests pass
+5. Request review from maintainers
+
+### Code Style
+- Frontend: Follow React best practices, use functional components
+- Backend: Follow PEP 8 guidelines
+- Document all functions with docstrings
+- Maintain consistent error handling
+
+## Why Gemini AI?
+1. Free Tier Available: Unlike GPT-4, Gemini offers generous free usage
+2. Strong Performance: Comparable results to other LLMs
+3. Easy Integration: Simple Python SDK
+4. Cost-Effective: Perfect for open-source projects
 
 ## License
+MIT License. See [LICENSE](LICENSE) for details.
 
-This project is open-source and available under the MIT License.
+## Support
+- 🐛 Found a bug? [Open an issue](https://github.com/HxnDev/Job-Match-Analyzer/issues)
+- 💡 Have an idea? [Submit a feature request](https://github.com/HxnDev/Job-Match-Analyzer/issues)
+- 🤝 Want to contribute? [Check our contribution guide](#contributing)
 
-## Contact
-
-For any queries, feel free to open an issue or contribute to the discussion.
+## Author
+[Hassan Shahzad](https://github.com/HxnDev)
