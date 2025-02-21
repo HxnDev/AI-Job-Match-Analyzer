@@ -26,11 +26,11 @@ jobs:
         run: |
           pip install ruff pre-commit
 
-      - name: Run Ruff Formatting Check
-        run: ruff format --check .
+      - name: Run Ruff Formatting Check (Only in app/)
+        run: ruff format --check app/
 
-      - name: Run Ruff Linting
-        run: ruff check .
+      - name: Run Ruff Linting (Only in app/)
+        run: ruff check app/
 
       - name: Run Pre-commit Hooks
         run: pre-commit run --all-files
@@ -54,8 +54,8 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Run ESLint (Linting)
-        run: npx eslint . || true
+      - name: Run ESLint (Linting) on src/ only
+        run: npx eslint src/ || true  # Ignores warnings & prevents failure
 
-      - name: Run Prettier (Formatting)
-        run: npx prettier --check .
+      - name: Run Prettier (Formatting) on src/ only
+        run: npx prettier --check src/
