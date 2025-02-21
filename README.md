@@ -25,6 +25,12 @@ A powerful open-source tool that helps job seekers analyze their resumes against
 - Beautiful Soup 4 (for web scraping)
 - Ruff (for code quality)
 
+## Demo Video
+
+![Alt Text](https://github.com/HxnDev/Virtual-Mouse-using-OpenCV/blob/main/Virtual%20Mouse.gif)
+
+
+
 ## Project Structure
 
 ### Frontend Structure
