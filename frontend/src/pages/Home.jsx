@@ -1,42 +1,116 @@
-import React, { useState } from "react";
-import JobInput from "../components/JobInput";
-import JobResults from "../components/JobResults";
-import ResumeUpload from "../components/ResumeUpload";
-import axios from "axios";
+import { useState } from 'react';
+import { Container, Stack, Title, Paper, Text, Button, LoadingOverlay } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
+import { notifications } from '@mantine/notifications';
+import ResumeUpload from '../components/ResumeUpload';
+import JobInput from '../components/JobInput';
+import JobResults from '../components/JobResults';
+import axios from 'axios';
 
-function Home() {
-    const [jobLinks, setJobLinks] = useState([]);
+const Home = () => {
     const [resumeFile, setResumeFile] = useState(null);
-    const [analysisResults, setAnalysisResults] = useState(null);
+    const [resumeText, setResumeText] = useState('');
+    const [jobLinks, setJobLinks] = useState([]);
+    const [jobResults, setJobResults] = useState([]);
+    const [loading, handlers] = useDisclosure(false);
 
     const handleAnalyze = async () => {
-        if (!resumeFile || jobLinks.length === 0) {
-            alert("Please upload a resume and add job links!");
+        if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
+            notifications.show({
+                title: 'Missing Information',
+                message: 'Please provide a resume and at least one job link',
+                color: 'red'
+            });
             return;
         }
 
+        handlers.open();
         const formData = new FormData();
-        formData.append("resume", resumeFile);
-        formData.append("jobs", JSON.stringify(jobLinks));
+
+        // Handle resume input
+        if (resumeFile) {
+            formData.append('resume', resumeFile);
+        } else if (resumeText) {
+            // Create a text file from the resume text
+            const textFile = new Blob([resumeText], { type: 'text/plain' });
+            formData.append('resume', textFile, 'resume.txt');
+        }
+
+        // Format job links
+        formData.append('job_links', JSON.stringify(jobLinks));
 
         try {
-            const response = await axios.post("http://localhost:5001/api/analyze", formData);
-            setAnalysisResults(response.data);
+            const response = await axios.post('http://localhost:5050/api/analyze', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            if (response.data.success) {
+                setJobResults(response.data.results || []);
+                notifications.show({
+                    title: 'Success',
+                    message: 'Resume analysis completed',
+                    color: 'green'
+                });
+            } else {
+                throw new Error(response.data.error || 'Analysis failed');
+            }
         } catch (error) {
             console.error("Error analyzing resume:", error);
-            alert("Failed to analyze resume");
+            notifications.show({
+                title: 'Error',
+                message: error.response?.data?.error || 'Error analyzing resume. Please try again.',
+                color: 'red'
+            });
+        } finally {
+            handlers.close();
         }
     };
 
     return (
-        <div>
-            <h1>Job Match Analyzer</h1>
-            <ResumeUpload setResumeFile={setResumeFile} />
-            <JobInput jobLinks={jobLinks} setJobLinks={setJobLinks} />
-            <button onClick={handleAnalyze}>Analyze Resume</button>
-            <JobResults results={analysisResults} />
-        </div>
+        <Container size="lg" py="xl">
+            <Stack spacing="xl">
+                <Title order={1} align="center" color="blue">
+                    Job Match Analyzer
+                </Title>
+
+                <Text size="lg" color="dimmed" align="center">
+                    Upload your resume and add job links to analyze your match score
+                </Text>
+
+                <Paper shadow="sm" radius="md" p="xl" withBorder>
+                    <Stack spacing="md">
+                        <ResumeUpload
+                            setResumeFile={setResumeFile}
+                            resumeText={resumeText}
+                            setResumeText={setResumeText}
+                        />
+
+                        <JobInput
+                            jobLinks={jobLinks}
+                            setJobLinks={setJobLinks}
+                        />
+
+                        <Button
+                            onClick={handleAnalyze}
+                            disabled={(!resumeFile && !resumeText) || jobLinks.length === 0}
+                            fullWidth
+                            size="md"
+                            color="blue"
+                        >
+                            Analyze Resume
+                        </Button>
+                    </Stack>
+                </Paper>
+
+                <div style={{ position: 'relative' }}>
+                    <LoadingOverlay visible={loading} overlayBlur={2} />
+                    <JobResults results={jobResults} />
+                </div>
+            </Stack>
+        </Container>
     );
-}
+};
 
 export default Home;
