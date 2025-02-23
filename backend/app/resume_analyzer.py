@@ -108,11 +108,14 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
     2. For matches above 75%, provide recommendations to excel in the role
     3. Recommendations should be specific and actionable
     4. Match percentage should be based on both technical skills and overall fit
+    5. For each job, provide a clear job title and company name
 
     Return ONLY a JSON object with this exact structure:
     {{
         "jobs": [
             {{
+                "job_title": "<job title>",
+                "company_name": "<company name>",
                 "job_link": "<job url>",
                 "match_percentage": <number 0-100>,
                 "matching_skills": [<list of matching skills>],
@@ -151,7 +154,7 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
         if not isinstance(analysis, dict) or "jobs" not in analysis:
             return {"success": False, "error": "Invalid response structure"}
 
-        # Ensure recommendations
+        # Ensure recommendations and required fields
         for job in analysis["jobs"]:
             if not job.get("recommendations"):
                 job["recommendations"] = [
@@ -159,6 +162,11 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
                     "Quantify your impact with metrics",
                     "Add specific examples of team leadership",
                 ]
+            # Ensure job title and company name are present
+            if not job.get("job_title"):
+                job["job_title"] = "Position"
+            if not job.get("company_name"):
+                job["company_name"] = "Company"
 
         return {"success": True, "jobs": analysis["jobs"]}
 
