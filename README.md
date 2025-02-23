@@ -7,6 +7,7 @@ A powerful open-source tool that helps job seekers analyze their resumes against
 - 🔗 Multiple Job Links: Analyze your resume against multiple job postings simultaneously
 - 🎯 Smart Matching: AI-powered skill matching and gap analysis
 - ✍️ Cover Letters: Generate tailored cover letters for each job
+- 📊 Resume Feedback: Get comprehensive suggestions to improve your resume
 - 🔒 Privacy-First: Runs locally, your data stays on your machine
 - 💰 Cost-Effective: Uses Gemini AI (free tier available)
 
@@ -44,6 +45,7 @@ frontend/
 │   │   ├── JobInput.jsx
 │   │   ├── JobResults.jsx
 │   │   └── ResumeUpload.jsx
+│   │   └── ResumeReview.jsx
 │   ├── pages/
 │   │   └── Home.jsx              # Main page component
 │   ├── App.jsx                   # App root component
