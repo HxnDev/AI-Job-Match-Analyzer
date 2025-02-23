@@ -1,4 +1,4 @@
-# Job Match Analyzer
+# AI Job Match Analyzer
 
 A powerful open-source tool that helps job seekers analyze their resumes against job descriptions and generate AI-powered cover letters. Built with React and Flask, it leverages Google's Gemini AI for intelligent analysis and runs completely locally.
 
