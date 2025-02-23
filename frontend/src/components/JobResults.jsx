@@ -1,4 +1,4 @@
-import { Text, Button, Stack, Badge, Modal, List, Group, Paper } from '@mantine/core';
+import { Text, Button, Stack, Badge, Modal, List, Group, Paper, Flex } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
 import axios from 'axios';
@@ -7,12 +7,11 @@ import ResumeReview from './ResumeReview';
 const JobResults = ({ results, resumeFile }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [opened, { open, close }] = useDisclosure(false);
-  const [loadingJobs, setLoadingJobs] = useState({}); // Track loading state per job
+  const [loadingJobs, setLoadingJobs] = useState({});
 
   if (!results || results.length === 0) return null;
 
   const handleGenerateCoverLetter = async (jobLink) => {
-    // Set loading state for specific job
     setLoadingJobs((prev) => ({ ...prev, [jobLink]: true }));
 
     try {
@@ -30,8 +29,17 @@ const JobResults = ({ results, resumeFile }) => {
       console.error('Error generating cover letter:', error);
       alert(error.response?.data?.error || 'Error generating cover letter. Please try again.');
     } finally {
-      // Clear loading state for specific job
       setLoadingJobs((prev) => ({ ...prev, [jobLink]: false }));
+    }
+  };
+
+  const truncateUrl = (url) => {
+    try {
+      const maxLength = 60;
+      if (url.length <= maxLength) return url;
+      return url.substring(0, 30) + '...' + url.substring(url.length - 27);
+    } catch (error) {
+      return url;
     }
   };
 
@@ -44,24 +52,40 @@ const JobResults = ({ results, resumeFile }) => {
       {results.map((job, index) => (
         <Paper key={index} shadow="xs" p="md" withBorder>
           <Stack spacing="sm">
-            {/* Job Link and Match Score */}
-            <Group position="apart" align="center">
-              <Text size="sm" style={{ maxWidth: '70%' }} lineClamp={1}>
-                {job.job_link}
+            {/* Job Header Section */}
+            <Stack spacing={4}>
+              <Group position="apart" align="center">
+                <Text size="lg" weight={600} color="blue">
+                  {job.job_title}
+                </Text>
+                <Badge
+                  color={
+                    job.match_percentage >= 80
+                      ? 'green'
+                      : job.match_percentage >= 60
+                        ? 'yellow'
+                        : 'red'
+                  }
+                  size="lg"
+                >
+                  {job.match_percentage}% MATCH
+                </Badge>
+              </Group>
+              <Flex gap="xs" align="center">
+                <Text size="md" weight={500}>
+                  {job.company_name}
+                </Text>
+                <Text size="sm" color="dimmed">
+                  •
+                </Text>
+                <Text size="sm" color="dimmed">
+                  {job.platform}
+                </Text>
+              </Flex>
+              <Text size="sm" color="dimmed" style={{ wordBreak: 'break-all' }}>
+                {truncateUrl(job.job_link)}
               </Text>
-              <Badge
-                color={
-                  job.match_percentage >= 80
-                    ? 'green'
-                    : job.match_percentage >= 60
-                      ? 'yellow'
-                      : 'red'
-                }
-                size="lg"
-              >
-                {job.match_percentage}% MATCH
-              </Badge>
-            </Group>
+            </Stack>
 
             {/* Matching Skills */}
             <div>
