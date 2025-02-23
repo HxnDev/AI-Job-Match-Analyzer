@@ -28,7 +28,7 @@ A powerful open-source tool that helps job seekers analyze their resumes against
 
 ## Demo Video
 
-![Demo Video](https://github.com/HxnDev/Job-Match-Analyzer/blob/main/frontend/public/JobMatchAnalyzerDemo-ezgif.com-video-to-gif-converter%20(1).gif)
+![Demo Video](https://github.com/HxnDev/AI-Job-Match-Analyzer/blob/main/frontend/public/JobAnalyzer-ezgif.com-video-to-gif-converter.gif)
 
 
 
