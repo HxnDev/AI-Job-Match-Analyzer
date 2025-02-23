@@ -22,6 +22,21 @@ const JobInput = ({ jobLinks, setJobLinks }) => {
     }
   };
 
+  // Function to truncate URL for display
+  const truncateUrl = (url) => {
+    try {
+      // Create maximum character limit
+      const maxLength = 60;
+
+      if (url.length <= maxLength) return url;
+
+      // Take first 30 chars and last 27 chars (leaving space for "...")
+      return url.substring(0, 30) + '...' + url.substring(url.length - 27);
+    } catch (error) {
+      return url;
+    }
+  };
+
   return (
     <Stack spacing="xs">
       <Text size="sm" weight={500}>
@@ -56,8 +71,21 @@ const JobInput = ({ jobLinks, setJobLinks }) => {
                     <IconTrash size={16} />
                   </ActionIcon>
                 }
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                }}
               >
-                {link}
+                <Text
+                  size="sm"
+                  style={{
+                    wordBreak: 'break-all',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {truncateUrl(link)}
+                </Text>
               </List.Item>
             ))}
           </List>
