@@ -1,7 +1,8 @@
 from flask import Blueprint, jsonify, request
 
 from .cover_letter import generate_cover_letter
-from .resume_analyzer import analyze_resume
+from .job_scraper import scrape_job_description
+from .resume_analyzer import analyze_resume, generate_resume_review
 
 
 # Create blueprint
@@ -54,3 +55,72 @@ def generate_letter():
 def health_check():
     """Health check endpoint"""
     return jsonify({"status": "healthy"}), 200
+
+
+@api_bp.route("/review-resume", methods=["POST"])
+def review_resume():
+    """Endpoint to get detailed resume review"""
+    if "resume" not in request.files:
+        return jsonify({"success": False, "error": "No resume file provided"}), 400
+
+    if "job_link" not in request.form:
+        return jsonify({"success": False, "error": "No job link provided"}), 400
+
+    resume = request.files["resume"]
+    job_link = request.form["job_link"]
+
+    if not resume.filename.endswith((".pdf", ".txt")):
+        return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
+
+    # Get job description
+    job_result = scrape_job_description(job_link)
+    if not job_result["success"]:
+        return jsonify(job_result), 400
+
+    try:
+        # Extract resume text (reuse from analyze_resume)
+        if resume.filename.endswith(".pdf"):
+            from .resume_analyzer import extract_text_from_pdf
+
+            resume_content = extract_text_from_pdf(resume)
+        else:
+            resume_content = resume.read().decode("utf-8")
+
+        # Generate review
+        review_result = generate_resume_review(resume_content, job_result["description"])
+        return jsonify(review_result), 200 if review_result["success"] else 400
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
+
+
+@api_bp.route("/review-resume-manual", methods=["POST"])
+def review_resume_manual():
+    """Endpoint to get detailed resume review with manual job description"""
+    if "resume" not in request.files:
+        return jsonify({"success": False, "error": "No resume file provided"}), 400
+
+    if "job_description" not in request.form:
+        return jsonify({"success": False, "error": "No job description provided"}), 400
+
+    resume = request.files["resume"]
+    job_description = request.form["job_description"]
+
+    if not resume.filename.endswith((".pdf", ".txt")):
+        return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
+
+    try:
+        # Extract resume text
+        if resume.filename.endswith(".pdf"):
+            from .resume_analyzer import extract_text_from_pdf
+
+            resume_content = extract_text_from_pdf(resume)
+        else:
+            resume_content = resume.read().decode("utf-8")
+
+        # Generate review
+        review_result = generate_resume_review(resume_content, job_description)
+        return jsonify(review_result), 200 if review_result["success"] else 400
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
