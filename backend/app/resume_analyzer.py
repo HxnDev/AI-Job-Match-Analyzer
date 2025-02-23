@@ -164,3 +164,87 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
 
     except Exception as e:
         return {"success": False, "error": f"Error generating analysis: {str(e)}"}
+
+
+def generate_resume_review(resume_content: str, job_description: str) -> dict:
+    """
+    Generate detailed resume review and improvement suggestions.
+
+    Args:
+        resume_content: Text content of the resume
+        job_description: Text content of the job description
+
+    Returns:
+        dict: Review results including strengths, weaknesses, and improvement suggestions
+    """
+    try:
+        prompt = f"""
+        You are a professional resume reviewer and career coach. Review this resume against the job description
+        and provide detailed, actionable feedback to help improve the resume.
+
+        Resume content:
+        {resume_content}
+
+        Job description:
+        {job_description}
+
+        Analyze the resume and provide feedback with the following structure (respond ONLY with the JSON, no markdown formatting or other text):
+        {{
+            "strengths": [
+                "Detailed strength point 1",
+                "Detailed strength point 2",
+                "Detailed strength point 3"
+            ],
+            "weaknesses": [
+                "Area for improvement 1",
+                "Area for improvement 2",
+                "Area for improvement 3"
+            ],
+            "improvement_suggestions": [
+                {{
+                    "section": "Format",
+                    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+                }},
+                {{
+                    "section": "Content",
+                    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+                }},
+                {{
+                    "section": "Skills",
+                    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+                }},
+                {{
+                    "section": "Experience",
+                    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+                }},
+                {{
+                    "section": "Keywords",
+                    "suggestions": ["Specific suggestion 1", "Specific suggestion 2"]
+                }}
+            ]
+        }}
+        """
+
+        model = genai.GenerativeModel("gemini-pro")
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.7,
+                "top_p": 0.8,
+                "top_k": 40,
+                "max_output_tokens": 2048,
+            },
+        )
+
+        if response and response.text:
+            # Try to parse the response as JSON
+            try:
+                review_data = json.loads(response.text)
+                return {"success": True, "review": review_data}
+            except json.JSONDecodeError:
+                return {"success": False, "error": "Invalid response format from AI model"}
+        else:
+            return {"success": False, "error": "Failed to generate resume review"}
+
+    except Exception as e:
+        return {"success": False, "error": f"Error generating resume review: {str(e)}"}

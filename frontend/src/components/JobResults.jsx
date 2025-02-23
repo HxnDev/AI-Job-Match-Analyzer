@@ -2,8 +2,9 @@ import { Text, Button, Stack, Badge, Modal, List, Group, Paper } from '@mantine/
 import { useDisclosure } from '@mantine/hooks';
 import { useState } from 'react';
 import axios from 'axios';
+import ResumeReview from './ResumeReview';
 
-const JobResults = ({ results }) => {
+const JobResults = ({ results, resumeFile }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [opened, { open, close }] = useDisclosure(false);
   const [loadingJobs, setLoadingJobs] = useState({}); // Track loading state per job
@@ -16,7 +17,6 @@ const JobResults = ({ results }) => {
 
     try {
       const response = await axios.post('http://localhost:5050/api/cover-letter', {
-        resume: null,
         job_link: jobLink,
       });
 
@@ -121,20 +121,22 @@ const JobResults = ({ results }) => {
               )}
             </div>
 
-            {/* Action Button */}
-            <Button
-              variant="light"
-              onClick={() => handleGenerateCoverLetter(job.job_link)}
-              loading={loadingJobs[job.job_link]} // Use job-specific loading state
-              fullWidth
-              mt="sm"
-            >
-              Generate Cover Letter
-            </Button>
+            {/* Action Buttons */}
+            <Group grow>
+              <Button
+                variant="light"
+                onClick={() => handleGenerateCoverLetter(job.job_link)}
+                loading={loadingJobs[job.job_link]}
+              >
+                Generate Cover Letter
+              </Button>
+              <ResumeReview jobLink={job.job_link} resumeFile={resumeFile} />
+            </Group>
           </Stack>
         </Paper>
       ))}
 
+      {/* Cover Letter Modal */}
       <Modal opened={opened} onClose={close} title="Generated Cover Letter" size="lg">
         <Stack>
           <Text style={{ whiteSpace: 'pre-line' }}>{coverLetter}</Text>

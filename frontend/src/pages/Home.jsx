@@ -101,7 +101,12 @@ const Home = () => {
           </Stack>
         </Paper>
 
-        <JobResults results={jobResults} />
+        <JobResults
+          results={jobResults}
+          resumeFile={
+            resumeFile || (resumeText ? new Blob([resumeText], { type: 'text/plain' }) : null)
+          }
+        />
       </Stack>
     </Container>
   );
