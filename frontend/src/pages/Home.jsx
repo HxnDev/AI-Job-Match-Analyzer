@@ -5,6 +5,7 @@ import { notifications } from '@mantine/notifications';
 import ResumeUpload from '../components/ResumeUpload';
 import JobInput from '../components/JobInput';
 import JobResults from '../components/JobResults';
+import TemplateDownload from '../components/TemplateDownload';
 import axios from 'axios';
 
 const Home = () => {
@@ -76,6 +77,8 @@ const Home = () => {
         <Text size="lg" color="dimmed" align="center">
           Upload your resume and add job links to analyze your match score
         </Text>
+
+        <TemplateDownload />
 
         <Paper shadow="sm" radius="md" p="xl" withBorder>
           <Stack spacing="md" style={{ position: 'relative' }}>

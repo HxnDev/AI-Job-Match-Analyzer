@@ -130,7 +130,7 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
     }}
     """
 
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-2.0-flash")
     model_config = {
         "temperature": 0.7,
         "top_p": 0.8,
