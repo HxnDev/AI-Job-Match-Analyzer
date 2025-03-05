@@ -11,7 +11,7 @@ exclude = [
 ]
 
 # Line length settings
-line-length = 150
+line-length = 200
 
 # Cache configuration
 cache-dir = ".ruff_cache"

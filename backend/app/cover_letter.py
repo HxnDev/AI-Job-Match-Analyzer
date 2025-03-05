@@ -3,7 +3,7 @@ from typing import Dict
 import google.generativeai as genai
 
 
-def generate_cover_letter(job_link: str) -> Dict[str, any]:
+def generate_cover_letter(job_link: str, custom_instruction: str = "") -> Dict[str, any]:
     """
     Generate a cover letter based on the job link context
 
@@ -15,7 +15,7 @@ def generate_cover_letter(job_link: str) -> Dict[str, any]:
     """
     try:
         # Create prompt for cover letter generation
-        prompt = f"""
+        base_prompt = f"""
         You are a professional cover letter writer. Create a compelling cover letter for a software engineering position.
 
         The position is for this job posting: {job_link}
@@ -36,8 +36,14 @@ def generate_cover_letter(job_link: str) -> Dict[str, any]:
         and team leadership capabilities.
         """
 
+        # Add custom instructions if provided
+        if custom_instruction and custom_instruction.strip():
+            prompt = base_prompt + f"\n\nAdditional customization requirements:\n{custom_instruction}"
+        else:
+            prompt = base_prompt
+
         # Generate cover letter
-        model = genai.GenerativeModel("gemini-pro")
+        model = genai.GenerativeModel("gemini-2.0-flash")
         model_config = {
             "temperature": 0.7,
             "top_p": 0.8,

@@ -21,6 +21,9 @@ def analyze():
     resume = request.files["resume"]
     job_links = request.form["job_links"]
 
+    # Get custom instructions if provided
+    custom_instructions = request.form.get("custom_instructions", "")
+
     if not resume.filename.endswith((".pdf", ".txt")):
         return (
             jsonify(
@@ -32,7 +35,7 @@ def analyze():
             400,
         )
 
-    result = analyze_resume(resume, job_links)
+    result = analyze_resume(resume, job_links, custom_instructions)
 
     if result.get("success", False):
         return jsonify(result), 200
@@ -47,7 +50,10 @@ def generate_letter():
     if not data or "job_link" not in data:
         return jsonify({"success": False, "error": "Missing job link"}), 400
 
-    result = generate_cover_letter(data["job_link"])
+    # Get custom instruction if provided
+    custom_instruction = data.get("custom_instruction", "")
+
+    result = generate_cover_letter(data["job_link"], custom_instruction)
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
@@ -69,6 +75,9 @@ def review_resume():
     resume = request.files["resume"]
     job_link = request.form["job_link"]
 
+    # Get custom instructions if provided
+    custom_instructions = request.form.get("custom_instructions", "")
+
     if not resume.filename.endswith((".pdf", ".txt")):
         return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
 
@@ -87,8 +96,15 @@ def review_resume():
             resume_content = resume.read().decode("utf-8")
 
         # Generate review
-        review_result = generate_resume_review(resume_content, job_result["description"])
-        return jsonify(review_result), 200 if review_result["success"] else 400
+        review_result = generate_resume_review(resume_content, job_result["description"], custom_instructions)
+        if review_result.get("success", False):
+            return jsonify(review_result), 200
+        else:
+            # Return more detailed error for debugging
+            error_msg = review_result.get("error", "Unknown error")
+            raw_response = review_result.get("raw_response", "")
+
+            return jsonify({"success": False, "error": error_msg, "debug_info": raw_response}), 400
 
     except Exception as e:
         return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
@@ -106,6 +122,9 @@ def review_resume_manual():
     resume = request.files["resume"]
     job_description = request.form["job_description"]
 
+    # Get custom instructions if provided
+    custom_instructions = request.form.get("custom_instructions", "")
+
     if not resume.filename.endswith((".pdf", ".txt")):
         return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
 
@@ -119,7 +138,7 @@ def review_resume_manual():
             resume_content = resume.read().decode("utf-8")
 
         # Generate review
-        review_result = generate_resume_review(resume_content, job_description)
+        review_result = generate_resume_review(resume_content, job_description, custom_instructions)
         return jsonify(review_result), 200 if review_result["success"] else 400
 
     except Exception as e:

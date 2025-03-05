@@ -1,5 +1,17 @@
 import { useState } from 'react';
-import { Container, Stack, Title, Paper, Text, Button, LoadingOverlay } from '@mantine/core';
+import {
+  Container,
+  Stack,
+  Title,
+  Paper,
+  Text,
+  Button,
+  LoadingOverlay,
+  Textarea,
+  Group,
+  Collapse,
+  Switch,
+} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
 import ResumeUpload from '../components/ResumeUpload';
@@ -14,6 +26,8 @@ const Home = () => {
   const [jobLinks, setJobLinks] = useState([]);
   const [jobResults, setJobResults] = useState([]);
   const [loading, handlers] = useDisclosure(false);
+  const [showCustomInstructions, { toggle: toggleCustomInstructions }] = useDisclosure(false);
+  const [customInstructions, setCustomInstructions] = useState('');
 
   const handleAnalyze = async () => {
     if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
@@ -37,6 +51,11 @@ const Home = () => {
     }
 
     formData.append('job_links', JSON.stringify(jobLinks));
+
+    // Add custom instructions if provided
+    if (customInstructions.trim()) {
+      formData.append('custom_instructions', customInstructions);
+    }
 
     try {
       const response = await axios.post('http://localhost:5050/api/analyze', formData, {
@@ -90,6 +109,24 @@ const Home = () => {
             />
 
             <JobInput jobLinks={jobLinks} setJobLinks={setJobLinks} />
+
+            <Group position="right">
+              <Switch
+                label="Add custom instructions"
+                checked={showCustomInstructions}
+                onChange={toggleCustomInstructions}
+              />
+            </Group>
+
+            <Collapse in={showCustomInstructions}>
+              <Textarea
+                placeholder="Add custom instructions for the analysis (e.g., 'Focus on data science skills', 'Emphasize leadership experience')"
+                label="Custom Instructions"
+                minRows={3}
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.currentTarget.value)}
+              />
+            </Collapse>
 
             <Button
               onClick={handleAnalyze}

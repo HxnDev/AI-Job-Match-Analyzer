@@ -152,10 +152,7 @@ def scrape_job_description(job_url: str) -> dict:
                 return {"success": True, "description": job_description.get_text(strip=True), **job_details}
 
         # If no description found with selectors, try finding by content
-        description = soup.find(
-            lambda tag: tag.name == "div"
-            and any(keyword in tag.get_text().lower() for keyword in ["job description", "about this role", "about the role"])
-        )
+        description = soup.find(lambda tag: tag.name == "div" and any(keyword in tag.get_text().lower() for keyword in ["job description", "about this role", "about the role"]))
 
         if description:
             return {"success": True, "description": description.get_text(strip=True), **job_details}

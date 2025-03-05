@@ -17,13 +17,21 @@ import axios from 'axios';
 const ResumeReview = ({ jobLink, resumeFile }) => {
   const [review, setReview] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
-  const [opened, { open, close }] = useDisclosure(false);
-  const [manualJobDescription, setManualJobDescription] = React.useState('');
-  const [needsManualEntry, setNeedsManualEntry] = React.useState(false);
+  const [reviewModalOpened, { open: openReviewModal, close: closeReviewModal }] =
+    useDisclosure(false);
+  const [customInstructionOpened, { open: openCustomInstruction, close: closeCustomInstruction }] =
+    useDisclosure(false);
+  const [customInstructions, setCustomInstructions] = React.useState('');
 
-  const handleGetReview = async () => {
+  const handleGetReview = async (instructions = '') => {
     if (!resumeFile) {
       alert('Please upload a resume first');
+      return;
+    }
+
+    // Check if jobLink is valid
+    if (!jobLink || jobLink.trim() === '') {
+      alert('Invalid job link. Please try with a different job.');
       return;
     }
 
@@ -33,6 +41,11 @@ const ResumeReview = ({ jobLink, resumeFile }) => {
       formData.append('resume', resumeFile);
       formData.append('job_link', jobLink);
 
+      // Add custom instructions if provided
+      if (instructions && instructions.trim()) {
+        formData.append('custom_instructions', instructions);
+      }
+
       const response = await axios.post('http://localhost:5050/api/review-resume', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -40,85 +53,45 @@ const ResumeReview = ({ jobLink, resumeFile }) => {
       });
 
       if (response.data.success) {
-        if (response.data.requires_manual_entry) {
-          setNeedsManualEntry(true);
-          open();
-        } else {
-          setReview(response.data.review);
-          open();
-        }
+        setReview(response.data.review);
+        openReviewModal();
       } else {
         throw new Error(response.data.error || 'Failed to get resume review');
       }
     } catch (error) {
       console.error('Error getting resume review:', error);
-      alert(error.response?.data?.error || 'Error getting resume review. Please try again.');
+      // Get a more detailed error message if available
+      let errorMessage = 'Error getting resume review. Please try again.';
+
+      if (error.response && error.response.data) {
+        if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+
+        // Include debug info if available (only in development)
+        if (error.response.data.debug_info) {
+          console.error('Debug info:', error.response.data.debug_info);
+        }
+      }
+
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleManualSubmit = async () => {
-    if (!manualJobDescription.trim()) {
-      alert('Please enter the job description');
-      return;
-    }
+  const handleOpenCustomInstruction = () => {
+    setCustomInstructions('');
+    openCustomInstruction();
+  };
 
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append('resume', resumeFile);
-      formData.append('job_description', manualJobDescription);
-
-      const response = await axios.post(
-        'http://localhost:5050/api/review-resume-manual',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      if (response.data.success) {
-        setReview(response.data.review);
-        setNeedsManualEntry(false);
-      } else {
-        throw new Error(response.data.error || 'Failed to get resume review');
-      }
-    } catch (error) {
-      console.error('Error getting resume review:', error);
-      alert(error.response?.data?.error || 'Error getting resume review. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleSubmitCustomInstruction = () => {
+    closeCustomInstruction();
+    handleGetReview(customInstructions);
   };
 
   const renderReviewContent = () => {
-    if (needsManualEntry) {
-      return (
-        <Stack spacing="md">
-          <Text>
-            We couldn&apos;t automatically fetch the job description. Please paste it here:
-          </Text>
-          <Textarea
-            placeholder="Paste the job description here..."
-            minRows={5}
-            value={manualJobDescription}
-            onChange={(e) => setManualJobDescription(e.currentTarget.value)}
-          />
-          <Button
-            onClick={handleManualSubmit}
-            loading={loading}
-            disabled={!manualJobDescription.trim()}
-          >
-            Analyze Resume
-          </Button>
-        </Stack>
-      );
-    }
-
-    if (!review) return null;
+    if (!review) return <Text>Loading review...</Text>;
 
     return (
       <Paper shadow="sm" radius="md" p="xl" withBorder>
@@ -180,18 +153,60 @@ const ResumeReview = ({ jobLink, resumeFile }) => {
 
   return (
     <>
-      <Button variant="light" color="violet" onClick={handleGetReview} loading={loading} fullWidth>
-        Get Resume Review
-      </Button>
+      <Button.Group>
+        <Button
+          variant="light"
+          color="violet"
+          onClick={() => handleGetReview()}
+          loading={loading}
+          style={{ flexGrow: 1 }}
+        >
+          Get Resume Review
+        </Button>
+        <Button
+          variant="light"
+          color="teal"
+          onClick={handleOpenCustomInstruction}
+          disabled={loading}
+          style={{ flexBasis: 'auto' }}
+        >
+          +
+        </Button>
+      </Button.Group>
 
+      {/* Review Results Modal */}
       <Modal
-        opened={opened}
-        onClose={close}
-        title={needsManualEntry ? 'Enter Job Description' : 'Resume Review Analysis'}
+        opened={reviewModalOpened}
+        onClose={closeReviewModal}
+        title="Resume Review Analysis"
         size="xl"
         scrollAreaComponent={Modal.ScrollArea}
       >
         {renderReviewContent()}
+      </Modal>
+
+      {/* Custom Instruction Modal */}
+      <Modal
+        opened={customInstructionOpened}
+        onClose={closeCustomInstruction}
+        title="Customize Resume Review"
+        size="md"
+      >
+        <Stack spacing="md">
+          <Text size="sm">Add custom instructions for your resume review:</Text>
+          <Textarea
+            placeholder="For example: 'Focus on technical skills', 'Highlight areas to improve for leadership roles', etc."
+            minRows={4}
+            value={customInstructions}
+            onChange={(e) => setCustomInstructions(e.currentTarget.value)}
+          />
+          <Group position="right">
+            <Button variant="outline" onClick={closeCustomInstruction}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitCustomInstruction}>Get Resume Review</Button>
+          </Group>
+        </Stack>
       </Modal>
     </>
   );

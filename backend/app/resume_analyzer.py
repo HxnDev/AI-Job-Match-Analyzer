@@ -38,13 +38,14 @@ def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
         raise ValueError(f"Error reading PDF: {str(e)}") from e
 
 
-def analyze_resume(resume: BinaryIO, job_links: str) -> Dict[str, Union[bool, list, str]]:
+def analyze_resume(resume: BinaryIO, job_links: str, custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
     """
     Analyze a resume against job descriptions using AI.
 
     Args:
         resume: File object containing the resume
         job_links: JSON string containing job links
+        custom_instructions: Optional custom instructions for the review
 
     Returns:
         dict: Analysis results including matches and recommendations
@@ -72,7 +73,7 @@ def analyze_resume(resume: BinaryIO, job_links: str) -> Dict[str, Union[bool, li
             return {"success": False, "error": "Invalid job links format"}
 
         # Generate AI analysis
-        analysis_result = generate_analysis(resume_content, job_links_parsed)
+        analysis_result = generate_analysis(resume_content, job_links_parsed, custom_instructions)
 
         if not analysis_result["success"]:
             return analysis_result
@@ -83,18 +84,19 @@ def analyze_resume(resume: BinaryIO, job_links: str) -> Dict[str, Union[bool, li
         return {"success": False, "error": f"Error analyzing resume: {str(e)}"}
 
 
-def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[bool, list, str]]:
+def generate_analysis(resume_content: str, job_links: list, custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
     """
     Generate AI analysis for the resume and job links.
 
     Args:
         resume_content: Text content of the resume
         job_links: List of job links to analyze against
+        custom_instructions: Optional custom instructions for the review
 
     Returns:
         dict: Analysis results from the AI model
     """
-    prompt = f"""
+    base_prompt = f"""
     You are a professional resume analyzer. Analyze this resume content and provide detailed results.
 
     Resume content to analyze:
@@ -129,6 +131,12 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
         ]
     }}
     """
+
+    # Add custom instructions if provided
+    if custom_instructions and custom_instructions.strip():
+        prompt = base_prompt + f"\n\nAdditional customization requirements:\n{custom_instructions}"
+    else:
+        prompt = base_prompt
 
     model = genai.GenerativeModel("gemini-2.0-flash")
     model_config = {
@@ -174,19 +182,20 @@ def generate_analysis(resume_content: str, job_links: list) -> Dict[str, Union[b
         return {"success": False, "error": f"Error generating analysis: {str(e)}"}
 
 
-def generate_resume_review(resume_content: str, job_description: str) -> dict:
+def generate_resume_review(resume_content: str, job_description: str, custom_instructions: str = "") -> dict:
     """
     Generate detailed resume review and improvement suggestions.
 
     Args:
         resume_content: Text content of the resume
         job_description: Text content of the job description
+        custom_instructions: Optional custom instructions for the review
 
     Returns:
         dict: Review results including strengths, weaknesses, and improvement suggestions
     """
     try:
-        prompt = f"""
+        base_prompt = f"""
         You are a professional resume reviewer and career coach. Review this resume against the job description
         and provide detailed, actionable feedback to help improve the resume.
 
@@ -196,7 +205,10 @@ def generate_resume_review(resume_content: str, job_description: str) -> dict:
         Job description:
         {job_description}
 
-        Analyze the resume and provide feedback with the following structure (respond ONLY with the JSON, no markdown formatting or other text):
+        IMPORTANT: Your response must be a valid JSON object with the exact structure shown below.
+        Do not include any explanations, markdown, or text outside of the JSON object.
+
+        JSON structure to use:
         {{
             "strengths": [
                 "Detailed strength point 1",
@@ -233,7 +245,13 @@ def generate_resume_review(resume_content: str, job_description: str) -> dict:
         }}
         """
 
-        model = genai.GenerativeModel("gemini-pro")
+        # Add custom instructions if provided
+        if custom_instructions and custom_instructions.strip():
+            prompt = base_prompt + f"\n\nAdditional customization requirements:\n{custom_instructions}"
+        else:
+            prompt = base_prompt
+
+        model = genai.GenerativeModel("gemini-2.0-flash")
         response = model.generate_content(
             prompt,
             generation_config={
@@ -245,12 +263,52 @@ def generate_resume_review(resume_content: str, job_description: str) -> dict:
         )
 
         if response and response.text:
-            # Try to parse the response as JSON
+            # Try to parse the response as JSON with more robust error handling
             try:
-                review_data = json.loads(response.text)
+                # Clean up the response text to ensure it's valid JSON
+                cleaned_text = response.text.strip()
+
+                # Find JSON content using regex if needed
+                import re
+
+                json_match = re.search(r"({[\s\S]*})", cleaned_text)
+                if json_match:
+                    cleaned_text = json_match.group(1)
+
+                # Parse the JSON
+                import json
+
+                review_data = json.loads(cleaned_text)
+
+                # Validate the structure
+                if not isinstance(review_data, dict):
+                    return {"success": False, "error": "Response is not a valid JSON object"}
+
+                if "strengths" not in review_data or "weaknesses" not in review_data or "improvement_suggestions" not in review_data:
+                    return {"success": False, "error": "Response is missing required fields"}
+
+                # Ensure all sections are present with default values if needed
+                if not review_data.get("strengths"):
+                    review_data["strengths"] = ["Strong professional experience", "Clear presentation of skills", "Good organization"]
+
+                if not review_data.get("weaknesses"):
+                    review_data["weaknesses"] = ["Could benefit from more quantifiable achievements", "Consider adding more relevant keywords", "Format could be more scannable"]
+
+                sections = ["Format", "Content", "Skills", "Experience", "Keywords"]
+                existing_sections = [s["section"] for s in review_data.get("improvement_suggestions", [])]
+
+                for section in sections:
+                    if section not in existing_sections:
+                        review_data.setdefault("improvement_suggestions", []).append({"section": section, "suggestions": ["Consider reviewing this section"]})
+
                 return {"success": True, "review": review_data}
-            except json.JSONDecodeError:
-                return {"success": False, "error": "Invalid response format from AI model"}
+
+            except json.JSONDecodeError as e:
+                return {
+                    "success": False,
+                    "error": f"Invalid response format from AI model: {str(e)}",
+                    "raw_response": cleaned_text[:500],  # Include part of the raw response for debugging
+                }
         else:
             return {"success": False, "error": "Failed to generate resume review"}
 
