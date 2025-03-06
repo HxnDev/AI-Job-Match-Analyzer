@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 const LanguageSelector = ({ value, onChange, label = 'Language' }) => {
-  const [languages, setLanguages] = useState([
-    { value: 'en', label: 'English' },
-  ]);
+  const [languages, setLanguages] = useState([{ value: 'en', label: 'English' }]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

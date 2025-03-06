@@ -26,7 +26,7 @@ def generate_cover_letter(job_link: str, custom_instruction: str = "", language:
             "ja": "カバーレターを日本語で書いてください (Japanese).",
             "pt": "Escreva a carta de apresentação em português (Portuguese).",
             "ru": "Напишите сопроводительное письмо на русском языке (Russian).",
-            "ar": "اكتب خطاب التغطية باللغة العربية (Arabic)."
+            "ar": "اكتب خطاب التغطية باللغة العربية (Arabic).",
         }
 
         # Default to English if language not supported
@@ -73,11 +73,7 @@ def generate_cover_letter(job_link: str, custom_instruction: str = "", language:
         response = model.generate_content(prompt, generation_config=model_config)
 
         if response and response.text:
-            return {
-                "success": True, 
-                "cover_letter": response.text.strip(),
-                "language": language
-            }
+            return {"success": True, "cover_letter": response.text.strip(), "language": language}
         else:
             return {"success": False, "error": "Failed to generate cover letter"}
 

@@ -18,6 +18,7 @@ import ResumeUpload from '../components/ResumeUpload';
 import JobInput from '../components/JobInput';
 import JobResults from '../components/JobResults';
 import TemplateDownload from '../components/TemplateDownload';
+import ToolsSection from '../components/ToolsSection';
 import axios from 'axios';
 
 const Home = () => {
@@ -29,6 +30,7 @@ const Home = () => {
   const [showCustomInstructions, { toggle: toggleCustomInstructions }] = useDisclosure(false);
   const [customInstructions, setCustomInstructions] = useState('');
   const [defaultLanguage, setDefaultLanguage] = useState('en');
+  const [currentJobTitle, setCurrentJobTitle] = useState('');
 
   // Load default language preference when component mounts
   useEffect(() => {
@@ -164,6 +166,9 @@ const Home = () => {
             </Button>
           </Stack>
         </Paper>
+
+        {/* Only show tools section if there are job results or a job title */}
+        {(jobResults.length > 0 || currentJobTitle) && <ToolsSection jobTitle={currentJobTitle} />}
 
         <JobResults
           results={jobResults}

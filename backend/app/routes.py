@@ -1,7 +1,9 @@
 from flask import Blueprint, jsonify, request
 
 from .cover_letter import generate_cover_letter
+from .email_reply import generate_email_reply
 from .job_scraper import scrape_job_description
+from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
 
 
@@ -57,6 +59,47 @@ def generate_letter():
     language = data.get("language", "en")
 
     result = generate_cover_letter(data["job_link"], custom_instruction, language)
+    return jsonify(result), 200 if result.get("success", False) else 400
+
+
+@api_bp.route("/motivational-letter", methods=["POST"])
+def motivational_letter():
+    """Endpoint to generate a motivational letter"""
+    data = request.json
+    if not data or "job_title" not in data:
+        return jsonify({"success": False, "error": "Missing job title"}), 400
+
+    # Get job description if available
+    job_description = data.get("job_description", "")
+
+    # Get language preference (default to English)
+    language = data.get("language", "en")
+
+    # Get custom instruction if provided
+    custom_instruction = data.get("custom_instruction", "")
+
+    # Add custom instructions to the job description if provided
+    if custom_instruction and custom_instruction.strip():
+        job_description = f"{job_description}\n\nAdditional requirements: {custom_instruction}"
+
+    result = generate_motivational_letter(data["job_title"], job_description, language)
+    return jsonify(result), 200 if result.get("success", False) else 400
+
+
+@api_bp.route("/email-reply", methods=["POST"])
+def email_reply():
+    """Endpoint to generate an email reply"""
+    data = request.json
+    if not data or "email_content" not in data:
+        return jsonify({"success": False, "error": "Missing email content"}), 400
+
+    # Get tone preference (default to professional)
+    tone = data.get("tone", "professional")
+
+    # Get language preference (default to English)
+    language = data.get("language", "en")
+
+    result = generate_email_reply(data["email_content"], tone, language)
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
@@ -146,7 +189,8 @@ def review_resume_manual():
 
     except Exception as e:
         return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
-    
+
+
 @api_bp.route("/supported-languages", methods=["GET"])
 def get_supported_languages():
     """Endpoint to get supported languages for cover letter generation"""
@@ -159,6 +203,13 @@ def get_supported_languages():
         {"code": "ja", "name": "Japanese (日本語)"},
         {"code": "pt", "name": "Portuguese (Português)"},
         {"code": "ru", "name": "Russian (Русский)"},
-        {"code": "ar", "name": "Arabic (العربية)"}
+        {"code": "ar", "name": "Arabic (العربية)"},
     ]
     return jsonify({"success": True, "languages": supported_languages}), 200
+
+
+@api_bp.route("/email-tones", methods=["GET"])
+def get_email_tones():
+    """Endpoint to get supported email tones"""
+    email_tones = [{"code": "professional", "name": "Professional"}, {"code": "friendly", "name": "Friendly"}, {"code": "formal", "name": "Formal"}]
+    return jsonify({"success": True, "tones": email_tones}), 200
