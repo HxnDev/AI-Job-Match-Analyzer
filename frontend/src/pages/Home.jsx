@@ -76,7 +76,14 @@ const Home = () => {
       });
 
       if (response.data.success) {
-        setJobResults(response.data.results || []);
+        const results = response.data.results || [];
+        setJobResults(results);
+
+        // Extract job title from the first result if available
+        if (results.length > 0 && results[0].job_title) {
+          setCurrentJobTitle(results[0].job_title);
+        }
+
         notifications.show({
           title: 'Success',
           message: 'Resume analysis completed',
@@ -168,7 +175,9 @@ const Home = () => {
         </Paper>
 
         {/* Only show tools section if there are job results or a job title */}
-        {(jobResults.length > 0 || currentJobTitle) && <ToolsSection jobTitle={currentJobTitle} />}
+        {(jobResults.length > 0 || currentJobTitle) && (
+          <ToolsSection defaultLanguage={defaultLanguage} />
+        )}
 
         <JobResults
           results={jobResults}

@@ -9,35 +9,18 @@ from typing import Dict
 import google.generativeai as genai
 
 
-def generate_motivational_letter(job_title: str, job_description: str = "", language: str = "en") -> Dict[str, any]:
+def generate_motivational_letter(job_title: str, job_description: str = "") -> Dict[str, any]:
     """
     Generate a motivational letter for a job application in the specified language.
 
     Args:
         job_title: The title of the job the user is applying for
         job_description: Optional job description to make the letter more specific
-        language: Language code (default: "en" for English)
 
     Returns:
         dict: Contains success status and either the motivational letter or error message
     """
     try:
-        # Determine language instruction
-        language_instructions = {
-            "en": "Write the motivational letter in English.",
-            "es": "Escribe la carta de motivación en español (Spanish).",
-            "fr": "Écris la lettre de motivation en français (French).",
-            "de": "Schreibe das Motivationsschreiben auf Deutsch (German).",
-            "zh": "用中文写求职动机信 (Chinese).",
-            "ja": "動機レターを日本語で書いてください (Japanese).",
-            "pt": "Escreva a carta de motivação em português (Portuguese).",
-            "ru": "Напишите мотивационное письмо на русском языке (Russian).",
-            "ar": "اكتب خطاب الدافع باللغة العربية (Arabic).",
-        }
-
-        # Default to English if language not supported
-        language_instruction = language_instructions.get(language, language_instructions["en"])
-
         # Add job description if provided
         job_context = ""
         if job_description and job_description.strip():
@@ -54,8 +37,6 @@ def generate_motivational_letter(job_title: str, job_description: str = "", lang
         Create a compelling motivational letter for a {job_title} position.
         
         {job_context}
-        
-        {language_instruction}
 
         The motivational letter should:
         1. Explain why the candidate is interested in this position/company
@@ -81,7 +62,7 @@ def generate_motivational_letter(job_title: str, job_description: str = "", lang
         response = model.generate_content(prompt, generation_config=model_config)
 
         if response and response.text:
-            return {"success": True, "letter": response.text.strip(), "language": language}
+            return {"success": True, "letter": response.text.strip()}
         else:
             return {"success": False, "error": "Failed to generate motivational letter"}
 

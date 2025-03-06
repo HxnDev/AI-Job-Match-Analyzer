@@ -18,7 +18,7 @@ import { IconCheck, IconCopy, IconMail } from '@tabler/icons-react';
 import LanguageSelector from './LanguageSelector';
 import axios from 'axios';
 
-const EmailReplyGenerator = () => {
+const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
   const [opened, { open, close }] = useDisclosure(false);
   const [emailContent, setEmailContent] = useState('');
   const [replyContent, setReplyContent] = useState('');
@@ -30,6 +30,11 @@ const EmailReplyGenerator = () => {
     { value: 'friendly', label: 'Friendly' },
     { value: 'formal', label: 'Formal' },
   ]);
+
+  // Update language when defaultLanguage prop changes
+  useEffect(() => {
+    setSelectedLanguage(defaultLanguage);
+  }, [defaultLanguage]);
 
   // Fetch available email tones when component mounts
   useEffect(() => {

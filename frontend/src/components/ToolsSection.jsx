@@ -1,23 +1,19 @@
 import React from 'react';
 import { Paper, Title, Grid, Text, Stack } from '@mantine/core';
-import MotivationalMessage from './MotivationalMessage';
 import EmailReplyGenerator from './EmailReplyGenerator';
 
-const ToolsSection = ({ jobTitle }) => {
+const ToolsSection = ({ defaultLanguage = 'en' }) => {
   return (
     <Paper shadow="sm" radius="md" p="xl" withBorder>
       <Stack spacing="md">
-        <Title order={3}>Job Search Tools</Title>
+        <Title order={3}>Additional Tools</Title>
         <Text size="sm" color="dimmed">
-          Additional tools to help with your job search and professional communication
+          Professional communication tools to assist with your job search
         </Text>
 
-        <Grid gutter="md">
-          <Grid.Col xs={12} sm={6}>
-            <MotivationalMessage jobTitle={jobTitle} />
-          </Grid.Col>
-          <Grid.Col xs={12} sm={6}>
-            <EmailReplyGenerator />
+        <Grid>
+          <Grid.Col>
+            <EmailReplyGenerator defaultLanguage={defaultLanguage} />
           </Grid.Col>
         </Grid>
       </Stack>

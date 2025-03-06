@@ -118,7 +118,6 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
         job_title: job.job_title,
         job_description: job.job_description || '',
         custom_instruction: instruction,
-        language: selectedLanguage,
       });
 
       if (response.data.success) {
@@ -334,59 +333,32 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
                 </Menu.Dropdown>
               </Menu>
 
-              {/* Motivational Letter Button Group */}
-              <Menu position="bottom-start" withinPortal>
-                <Menu.Target>
-                  <Button.Group style={{ flexGrow: 1 }}>
-                    <Button
-                      variant="light"
-                      color="yellow"
-                      onClick={() => handleGenerateMotivationalLetter(job)}
-                      loading={loadingMotivation[job.job_link]}
-                      style={{ flexGrow: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                      leftIcon={<IconFileDescription size={16} />}
-                    >
-                      Generate Motivational Letter
-                    </Button>
-                    <Button
-                      variant="light"
-                      color="yellow"
-                      style={{
-                        flexGrow: 0,
-                        paddingLeft: '8px',
-                        paddingRight: '8px',
-                        borderTopLeftRadius: 0,
-                        borderBottomLeftRadius: 0,
-                        borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-                      }}
-                    >
-                      <Group spacing={2}>
-                        <IconLanguage size={16} />
-                        <IconChevronDown size={16} />
-                      </Group>
-                    </Button>
-                  </Button.Group>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Select Language</Menu.Label>
-                  {availableLanguages.map((lang) => (
-                    <Menu.Item
-                      key={lang.value}
-                      onClick={() => setSelectedLanguage(lang.value)}
-                      icon={lang.value === selectedLanguage ? '✓' : null}
-                    >
-                      {lang.label}
-                    </Menu.Item>
-                  ))}
-                  <Menu.Divider />
-                  <Menu.Item
-                    icon={<IconPlus size={14} />}
-                    onClick={() => handleOpenMotivationCustomInstruction(job)}
-                  >
-                    Custom Instructions
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+              {/* Motivational Letter Button */}
+              <Button.Group style={{ flexGrow: 1 }}>
+                <Button
+                  variant="light"
+                  color="yellow"
+                  onClick={() => handleGenerateMotivationalLetter(job)}
+                  loading={loadingMotivation[job.job_link]}
+                  style={{ flexGrow: 1 }}
+                  leftIcon={<IconFileDescription size={16} />}
+                >
+                  Generate Motivational Letter
+                </Button>
+                <Button
+                  variant="light"
+                  color="yellow"
+                  style={{
+                    flexGrow: 0,
+                    paddingLeft: '8px',
+                    paddingRight: '8px',
+                    borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                  }}
+                  onClick={() => handleOpenMotivationCustomInstruction(job)}
+                >
+                  <IconPlus size={16} />
+                </Button>
+              </Button.Group>
             </Group>
 
             <Group grow>
@@ -440,7 +412,7 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
         title={
           <Group>
             <Text>Motivational Letter</Text>
-            <Badge color="yellow">{getLanguageLabel(selectedLanguage)}</Badge>
+            <Badge color="yellow">English</Badge>
           </Group>
         }
         size="lg"
@@ -514,11 +486,9 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
             value={customInstruction}
             onChange={(e) => setCustomInstruction(e.currentTarget.value)}
           />
-          <LanguageSelector
-            value={selectedLanguage}
-            onChange={setSelectedLanguage}
-            label="Motivational Letter Language"
-          />
+          <Text size="sm" color="dimmed">
+            Motivational letters are always generated in English
+          </Text>
           <Group position="right">
             <Button variant="outline" onClick={closeMotivationCustomInstruction}>
               Cancel

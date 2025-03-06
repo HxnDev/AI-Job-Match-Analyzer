@@ -72,9 +72,6 @@ def motivational_letter():
     # Get job description if available
     job_description = data.get("job_description", "")
 
-    # Get language preference (default to English)
-    language = data.get("language", "en")
-
     # Get custom instruction if provided
     custom_instruction = data.get("custom_instruction", "")
 
@@ -82,7 +79,7 @@ def motivational_letter():
     if custom_instruction and custom_instruction.strip():
         job_description = f"{job_description}\n\nAdditional requirements: {custom_instruction}"
 
-    result = generate_motivational_letter(data["job_title"], job_description, language)
+    result = generate_motivational_letter(data["job_title"])
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
