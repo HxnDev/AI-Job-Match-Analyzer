@@ -13,6 +13,11 @@ import {
   ActionIcon,
   CopyButton,
   Tooltip,
+  Grid,
+  Divider,
+  RingProgress,
+  ThemeIcon,
+  Accordion,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState, useEffect } from 'react';
@@ -24,11 +29,18 @@ import {
   IconFileDescription,
   IconCopy,
   IconCheck,
+  IconX,
+  IconBulb,
+  IconSchool,
+  IconAlertTriangle,
+  IconFileCheck,
 } from '@tabler/icons-react';
 import ResumeReview from './ResumeReview';
 import LanguageSelector from './LanguageSelector';
+import ATSChecker from './ATSChecker';
+import LearningRecommender from './LearningRecommender';
 
-const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
+const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis = null }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterOpened, { open: openCoverLetter, close: closeCoverLetter }] =
     useDisclosure(false);
@@ -37,13 +49,17 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
   const [loadingJobs, setLoadingJobs] = useState({});
   const [customInstruction, setCustomInstruction] = useState('');
   const [currentJobLink, setCurrentJobLink] = useState('');
-  const [selectedLanguage, setSelectedLanguage] = useState(defaultLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [availableLanguages, setAvailableLanguages] = useState([
     { value: 'en', label: 'English' },
     { value: 'es', label: 'Spanish (Español)' },
     { value: 'fr', label: 'French (Français)' },
     { value: 'de', label: 'German (Deutsch)' },
   ]);
+
+  // ATS States
+  const [atsModalOpened, { open: openAtsModal, close: closeAtsModal }] = useDisclosure(false);
+  const [atsResults, setAtsResults] = useState(null);
 
   // Motivational letter states
   const [motivationalLetter, setMotivationalLetter] = useState('');
@@ -60,7 +76,9 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
 
   useEffect(() => {
     // Update selected language when defaultLanguage prop changes
-    setSelectedLanguage(defaultLanguage);
+    if (defaultLanguage) {
+      setSelectedLanguage(defaultLanguage);
+    }
   }, [defaultLanguage]);
 
   // Fetch available languages when component mounts
@@ -84,7 +102,15 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
     fetchLanguages();
   }, []);
 
-  if (!results || results.length === 0) return null;
+  // Check for ATS results from props
+  useEffect(() => {
+    if (ats_analysis) {
+      setAtsResults(ats_analysis);
+    }
+  }, [ats_analysis]);
+
+  // Make sure results is treated as an array
+  if (!results || !Array.isArray(results) || results.length === 0) return null;
 
   const handleGenerateCoverLetter = async (jobLink, instruction = '') => {
     setLoadingJobs((prev) => ({ ...prev, [jobLink]: true }));
@@ -176,11 +202,216 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
     return language ? language.label : 'English';
   };
 
+  // Functions for ATS Results Display
+  const getScoreColor = (score) => {
+    if (score >= 80) return 'green';
+    if (score >= 60) return 'yellow';
+    return 'red';
+  };
+
+  const renderAtsScoreRing = () => {
+    if (!atsResults) return null;
+
+    const score = atsResults.ats_score;
+    const color = getScoreColor(score);
+
+    return (
+      <Stack align="center" spacing="xs">
+        <RingProgress
+          sections={[{ value: score, color }]}
+          label={
+            <Text size="xl" weight={700} align="center">
+              {score}%
+            </Text>
+          }
+          size={140}
+          thickness={14}
+        />
+        <Text size="sm" color="dimmed" align="center" mt="xs">
+          ATS Compatibility Score
+        </Text>
+        <Badge color={color} size="lg" mt="sm">
+          {score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs Improvement'}
+        </Badge>
+      </Stack>
+    );
+  };
+
+  const renderAtsIssuesLists = () => {
+    if (!atsResults) return null;
+
+    return (
+      <Stack spacing="md">
+        <Paper withBorder p="md" radius="md">
+          <Stack spacing="md">
+            <Text weight={500}>Format Issues</Text>
+            <List
+              spacing="xs"
+              size="sm"
+              center
+              icon={
+                <ThemeIcon color="red" size={24} radius="xl">
+                  <IconX size={16} />
+                </ThemeIcon>
+              }
+            >
+              {atsResults.format_issues && atsResults.format_issues.length > 0 ? (
+                atsResults.format_issues.map((issue, index) => (
+                  <List.Item key={index}>{issue}</List.Item>
+                ))
+              ) : (
+                <Text color="dimmed">No format issues detected.</Text>
+              )}
+            </List>
+          </Stack>
+        </Paper>
+
+        <Paper withBorder p="md" radius="md">
+          <Stack spacing="md">
+            <Text weight={500}>Content Issues</Text>
+            <List
+              spacing="xs"
+              size="sm"
+              center
+              icon={
+                <ThemeIcon color="red" size={24} radius="xl">
+                  <IconX size={16} />
+                </ThemeIcon>
+              }
+            >
+              {atsResults.content_issues && atsResults.content_issues.length > 0 ? (
+                atsResults.content_issues.map((issue, index) => (
+                  <List.Item key={index}>{issue}</List.Item>
+                ))
+              ) : (
+                <Text color="dimmed">No content issues detected.</Text>
+              )}
+            </List>
+          </Stack>
+        </Paper>
+
+        <Paper withBorder p="md" radius="md">
+          <Stack spacing="md">
+            <Text weight={500}>Keyword Issues</Text>
+            <List
+              spacing="xs"
+              size="sm"
+              center
+              icon={
+                <ThemeIcon color="red" size={24} radius="xl">
+                  <IconX size={16} />
+                </ThemeIcon>
+              }
+            >
+              {atsResults.keyword_issues && atsResults.keyword_issues.length > 0 ? (
+                atsResults.keyword_issues.map((issue, index) => (
+                  <List.Item key={index}>{issue}</List.Item>
+                ))
+              ) : (
+                <Text color="dimmed">No keyword issues detected.</Text>
+              )}
+            </List>
+          </Stack>
+        </Paper>
+      </Stack>
+    );
+  };
+
+  const renderAtsSuggestions = () => {
+    if (!atsResults) return null;
+
+    return (
+      <Paper withBorder p="md" radius="md">
+        <Stack spacing="md">
+          <Group position="apart">
+            <Text weight={500}>Improvement Suggestions</Text>
+          </Group>
+          <List
+            spacing="xs"
+            size="sm"
+            center
+            icon={
+              <ThemeIcon color="blue" size={24} radius="xl">
+                <IconBulb size={16} />
+              </ThemeIcon>
+            }
+          >
+            {atsResults.improvement_suggestions.map((suggestion, index) => (
+              <List.Item key={index}>{suggestion}</List.Item>
+            ))}
+          </List>
+        </Stack>
+      </Paper>
+    );
+  };
+
+  const renderAtsGoodPractices = () => {
+    if (!atsResults) return null;
+
+    return (
+      <Paper withBorder p="md" radius="md">
+        <Stack spacing="md">
+          <Group position="apart">
+            <Text weight={500}>Good Practices</Text>
+          </Group>
+          <List
+            spacing="xs"
+            size="sm"
+            center
+            icon={
+              <ThemeIcon color="green" size={24} radius="xl">
+                <IconCheck size={16} />
+              </ThemeIcon>
+            }
+          >
+            {atsResults.good_practices && atsResults.good_practices.length > 0 ? (
+              atsResults.good_practices.map((practice, index) => (
+                <List.Item key={index}>{practice}</List.Item>
+              ))
+            ) : (
+              <Text color="dimmed">No good practices detected.</Text>
+            )}
+          </List>
+        </Stack>
+      </Paper>
+    );
+  };
+
   return (
     <Stack spacing="md">
       <Text size="xl" weight={700}>
         Analysis Results
       </Text>
+
+      {/* ATS Results Summary (If Available) */}
+      {atsResults && (
+        <Paper shadow="sm" radius="md" p="xl" withBorder>
+          <Stack spacing="md">
+            <Group position="apart" align="flex-start">
+              <div>
+                <Text size="lg" weight={700}>
+                  ATS Compatibility: {atsResults.summary}
+                </Text>
+                <Text color="dimmed" size="sm">
+                  Based on analysis of your resume format and content
+                </Text>
+              </div>
+              {renderAtsScoreRing()}
+            </Group>
+
+            <Group position="right">
+              <Button
+                variant="light"
+                color="cyan"
+                onClick={openAtsModal}
+                leftIcon={<IconFileCheck size={16} />}
+              >
+                View Detailed ATS Report
+              </Button>
+            </Group>
+          </Stack>
+        </Paper>
+      )}
 
       {results.map((job, index) => (
         <Paper key={index} shadow="xs" p="md" withBorder>
@@ -278,92 +509,112 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
               )}
             </div>
 
-            {/* Action Buttons */}
-            <Group grow>
-              {/* Cover Letter Button Group */}
-              <Menu position="bottom-start" withinPortal>
-                <Menu.Target>
-                  <Button.Group style={{ flexGrow: 1 }}>
-                    <Button
-                      variant="light"
-                      color="blue"
-                      onClick={() => handleGenerateCoverLetter(job.job_link)}
-                      loading={loadingJobs[job.job_link]}
-                      style={{ flexGrow: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-                    >
-                      Generate Cover Letter
-                    </Button>
-                    <Button
-                      variant="light"
-                      color="blue"
-                      style={{
-                        flexGrow: 0,
-                        paddingLeft: '8px',
-                        paddingRight: '8px',
-                        borderTopLeftRadius: 0,
-                        borderBottomLeftRadius: 0,
-                        borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-                      }}
-                    >
-                      <Group spacing={2}>
-                        <IconLanguage size={16} />
-                        <IconChevronDown size={16} />
-                      </Group>
-                    </Button>
-                  </Button.Group>
-                </Menu.Target>
-                <Menu.Dropdown>
-                  <Menu.Label>Select Language</Menu.Label>
-                  {availableLanguages.map((lang) => (
+            <Divider />
+
+            {/* Action Buttons - First Row */}
+            <Grid>
+              <Grid.Col span={6}>
+                {/* Cover Letter Button Group */}
+                <Menu position="bottom-start" withinPortal>
+                  <Menu.Target>
+                    <Button.Group style={{ width: '100%' }}>
+                      <Button
+                        variant="light"
+                        color="blue"
+                        onClick={() => handleGenerateCoverLetter(job.job_link)}
+                        loading={loadingJobs[job.job_link]}
+                        style={{ flexGrow: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                      >
+                        Generate Cover Letter
+                      </Button>
+                      <Button
+                        variant="light"
+                        color="blue"
+                        style={{
+                          flexGrow: 0,
+                          paddingLeft: '8px',
+                          paddingRight: '8px',
+                          borderTopLeftRadius: 0,
+                          borderBottomLeftRadius: 0,
+                          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                        }}
+                      >
+                        <Group spacing={2}>
+                          <IconLanguage size={16} />
+                          <IconChevronDown size={16} />
+                        </Group>
+                      </Button>
+                    </Button.Group>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Label>Select Language</Menu.Label>
+                    {availableLanguages.map((lang) => (
+                      <Menu.Item
+                        key={lang.value}
+                        onClick={() => setSelectedLanguage(lang.value)}
+                        icon={lang.value === selectedLanguage ? '✓' : null}
+                      >
+                        {lang.label}
+                      </Menu.Item>
+                    ))}
+                    <Menu.Divider />
                     <Menu.Item
-                      key={lang.value}
-                      onClick={() => setSelectedLanguage(lang.value)}
-                      icon={lang.value === selectedLanguage ? '✓' : null}
+                      icon={<IconPlus size={14} />}
+                      onClick={() => handleOpenCustomInstruction(job.job_link)}
                     >
-                      {lang.label}
+                      Custom Instructions
                     </Menu.Item>
-                  ))}
-                  <Menu.Divider />
-                  <Menu.Item
-                    icon={<IconPlus size={14} />}
-                    onClick={() => handleOpenCustomInstruction(job.job_link)}
+                  </Menu.Dropdown>
+                </Menu>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                {/* Motivational Letter Button */}
+                <Button.Group style={{ width: '100%' }}>
+                  <Button
+                    variant="light"
+                    color="yellow"
+                    onClick={() => handleGenerateMotivationalLetter(job)}
+                    loading={loadingMotivation[job.job_link]}
+                    style={{ flexGrow: 1 }}
+                    leftIcon={<IconFileDescription size={16} />}
                   >
-                    Custom Instructions
-                  </Menu.Item>
-                </Menu.Dropdown>
-              </Menu>
+                    Motivational Letter
+                  </Button>
+                  <Button
+                    variant="light"
+                    color="yellow"
+                    style={{
+                      flexGrow: 0,
+                      paddingLeft: '8px',
+                      paddingRight: '8px',
+                      borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                    }}
+                    onClick={() => handleOpenMotivationCustomInstruction(job)}
+                  >
+                    <IconPlus size={16} />
+                  </Button>
+                </Button.Group>
+              </Grid.Col>
+            </Grid>
 
-              {/* Motivational Letter Button */}
-              <Button.Group style={{ flexGrow: 1 }}>
-                <Button
-                  variant="light"
-                  color="yellow"
-                  onClick={() => handleGenerateMotivationalLetter(job)}
-                  loading={loadingMotivation[job.job_link]}
-                  style={{ flexGrow: 1 }}
-                  leftIcon={<IconFileDescription size={16} />}
-                >
-                  Generate Motivational Letter
-                </Button>
-                <Button
-                  variant="light"
-                  color="yellow"
-                  style={{
-                    flexGrow: 0,
-                    paddingLeft: '8px',
-                    paddingRight: '8px',
-                    borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
-                  }}
-                  onClick={() => handleOpenMotivationCustomInstruction(job)}
-                >
-                  <IconPlus size={16} />
-                </Button>
-              </Button.Group>
-            </Group>
+            {/* Action Buttons - Second Row */}
+            <Grid>
+              <Grid.Col span={6}>
+                <ResumeReview jobLink={job.job_link} resumeFile={resumeFile} />
+              </Grid.Col>
+              <Grid.Col span={6}>
+                <ATSChecker resumeFile={resumeFile} jobDescription={job.job_description} />
+              </Grid.Col>
+            </Grid>
 
-            <Group grow>
-              <ResumeReview jobLink={job.job_link} resumeFile={resumeFile} />
-            </Group>
+            {/* Learning Resources */}
+            {job.missing_skills && job.missing_skills.length > 0 && (
+              <LearningRecommender
+                skills={job.missing_skills}
+                title={`Learning Resources for ${job.job_title}`}
+              />
+            )}
           </Stack>
         </Paper>
       ))}
@@ -498,6 +749,38 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
             </Button>
           </Group>
         </Stack>
+      </Modal>
+
+      {/* ATS Detailed Report Modal */}
+      <Modal
+        opened={atsModalOpened}
+        onClose={closeAtsModal}
+        title="ATS Compatibility Report"
+        size="lg"
+        scrollAreaComponent={Modal.ScrollArea}
+      >
+        {atsResults && (
+          <Stack spacing="md">
+            <Group position="apart" align="flex-start">
+              <div>
+                <Text size="lg" weight={700}>
+                  {atsResults.summary}
+                </Text>
+                <Text color="dimmed" size="sm">
+                  Based on analysis of your resume format and content
+                </Text>
+              </div>
+              {renderAtsScoreRing()}
+            </Group>
+
+            <Divider />
+
+            {/* ATS Issue Reports */}
+            {renderAtsIssuesLists()}
+            {renderAtsSuggestions()}
+            {renderAtsGoodPractices()}
+          </Stack>
+        )}
       </Modal>
     </Stack>
   );

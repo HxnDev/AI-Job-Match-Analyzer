@@ -11,6 +11,8 @@ from typing import BinaryIO, Dict, Union
 import google.generativeai as genai
 from PyPDF2 import PdfReader
 
+from .ats_analyzer import analyze_ats_compatibility
+
 
 def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
     """
@@ -77,8 +79,18 @@ def analyze_resume(resume: BinaryIO, job_links: str, custom_instructions: str = 
 
         if not analysis_result["success"]:
             return analysis_result
-
-        return {"success": True, "results": analysis_result["jobs"]}
+            
+        # Add ATS compatibility check
+        ats_result = analyze_ats_compatibility(resume_content)
+        
+        if ats_result["success"]:
+            return {
+                "success": True, 
+                "results": analysis_result["jobs"],
+                "ats_analysis": ats_result["analysis"]
+            }
+        else:
+            return {"success": True, "results": analysis_result["jobs"]}
 
     except Exception as e:
         return {"success": False, "error": f"Error analyzing resume: {str(e)}"}

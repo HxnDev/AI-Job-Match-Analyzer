@@ -1,8 +1,10 @@
 from flask import Blueprint, jsonify, request
 
+from .ats_analyzer import analyze_ats_compatibility, generate_optimized_resume_sections
 from .cover_letter import generate_cover_letter
 from .email_reply import generate_email_reply
 from .job_scraper import scrape_job_description
+from .learning_recommender import generate_learning_recommendations, generate_detailed_learning_plan
 from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
 
@@ -44,6 +46,84 @@ def analyze():
     else:
         return jsonify(result), 400
 
+@api_bp.route("/ats-check", methods=["POST"])
+def ats_check():
+    """Endpoint to analyze resume for ATS compatibility"""
+    if "resume" not in request.files:
+        return jsonify({"success": False, "error": "No resume file provided"}), 400
+
+    resume = request.files["resume"]
+
+    if not resume.filename.endswith((".pdf", ".txt")):
+        return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
+
+    try:
+        # Extract resume text
+        if resume.filename.endswith(".pdf"):
+            from .resume_analyzer import extract_text_from_pdf
+            resume_content = extract_text_from_pdf(resume)
+        else:
+            resume_content = resume.read().decode("utf-8")
+
+        # Analyze ATS compatibility
+        result = analyze_ats_compatibility(resume_content)
+        return jsonify(result), 200 if result.get("success", False) else 400
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
+
+
+@api_bp.route("/ats-optimize", methods=["POST"])
+def ats_optimize():
+    """Endpoint to get ATS-optimized resume sections"""
+    if "resume" not in request.files:
+        return jsonify({"success": False, "error": "No resume file provided"}), 400
+
+    if "job_description" not in request.form:
+        return jsonify({"success": False, "error": "No job description provided"}), 400
+
+    resume = request.files["resume"]
+    job_description = request.form["job_description"]
+
+    if not resume.filename.endswith((".pdf", ".txt")):
+        return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
+
+    try:
+        # Extract resume text
+        if resume.filename.endswith(".pdf"):
+            from .resume_analyzer import extract_text_from_pdf
+            resume_content = extract_text_from_pdf(resume)
+        else:
+            resume_content = resume.read().decode("utf-8")
+
+        # Generate optimized sections
+        result = generate_optimized_resume_sections(resume_content, job_description)
+        return jsonify(result), 200 if result.get("success", False) else 400
+
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
+
+
+@api_bp.route("/learning-recommendations", methods=["POST"])
+def learning_recommendations():
+    """Endpoint to get learning recommendations for skills"""
+    data = request.json
+    if not data or "skills" not in data or not isinstance(data["skills"], list):
+        return jsonify({"success": False, "error": "No skills provided or invalid format"}), 400
+
+    result = generate_learning_recommendations(data["skills"])
+    return jsonify(result), 200 if result.get("success", False) else 400
+
+
+@api_bp.route("/learning-plan", methods=["POST"])
+def learning_plan():
+    """Endpoint to get a detailed learning plan for a skill"""
+    data = request.json
+    if not data or "skill" not in data:
+        return jsonify({"success": False, "error": "No skill provided"}), 400
+
+    result = generate_detailed_learning_plan(data["skill"])
+    return jsonify(result), 200 if result.get("success", False) else 400
 
 @api_bp.route("/cover-letter", methods=["POST"])
 def generate_letter():

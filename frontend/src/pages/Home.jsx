@@ -11,6 +11,8 @@ import {
   Group,
   Collapse,
   Switch,
+  Grid,
+  Divider,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
@@ -19,6 +21,7 @@ import JobInput from '../components/JobInput';
 import JobResults from '../components/JobResults';
 import TemplateDownload from '../components/TemplateDownload';
 import ToolsSection from '../components/ToolsSection';
+import ATSChecker from '../components/ATSChecker';
 import axios from 'axios';
 
 const Home = () => {
@@ -31,6 +34,8 @@ const Home = () => {
   const [customInstructions, setCustomInstructions] = useState('');
   const [defaultLanguage, setDefaultLanguage] = useState('en');
   const [currentJobTitle, setCurrentJobTitle] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [atsAnalysis, setAtsAnalysis] = useState(null);
 
   // Load default language preference when component mounts
   useEffect(() => {
@@ -76,8 +81,14 @@ const Home = () => {
       });
 
       if (response.data.success) {
+        // Extract job analysis results
         const results = response.data.results || [];
         setJobResults(results);
+
+        // Extract ATS analysis if available
+        if (response.data.ats_analysis) {
+          setAtsAnalysis(response.data.ats_analysis);
+        }
 
         // Extract job title from the first result if available
         if (results.length > 0 && results[0].job_title) {
@@ -118,6 +129,16 @@ const Home = () => {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
+
+  // Prepare resume blob for components
+  const getResumeBlob = () => {
+    if (resumeFile) {
+      return resumeFile;
+    } else if (resumeText) {
+      return new Blob([resumeText], { type: 'text/plain' });
+    }
+    return null;
+  };
 
   return (
     <Container size="lg" py="xl">
@@ -174,18 +195,60 @@ const Home = () => {
           </Stack>
         </Paper>
 
+        {/* ATS Compatibility and Job Description Section */}
+        {!atsAnalysis && (
+          <Paper shadow="sm" radius="md" p="xl" withBorder>
+            <Stack spacing="md">
+              <Title order={3}>ATS Compatibility Tools</Title>
+              <Text color="dimmed">
+                Check how well your resume will perform with Applicant Tracking Systems
+              </Text>
+
+              <Grid>
+                <Grid.Col span={12} md={6}>
+                  <Stack spacing="xs">
+                    <Text size="sm" weight={500}>
+                      Job Description (Optional)
+                    </Text>
+                    <Textarea
+                      placeholder="Paste a job description to check ATS compatibility against specific requirements"
+                      minRows={4}
+                      value={jobDescription}
+                      onChange={(e) => setJobDescription(e.currentTarget.value)}
+                    />
+                  </Stack>
+                </Grid.Col>
+
+                <Grid.Col span={12} md={6}>
+                  <Stack spacing="xs" justify="space-between" style={{ height: '100%' }}>
+                    <Text size="sm" weight={500}>
+                      ATS Compatibility Check
+                    </Text>
+                    <Text size="xs" color="dimmed">
+                      Check how well your resume performs with Applicant Tracking Systems
+                    </Text>
+                    <ATSChecker resumeFile={getResumeBlob()} jobDescription={jobDescription} />
+                  </Stack>
+                </Grid.Col>
+              </Grid>
+            </Stack>
+          </Paper>
+        )}
+
         {/* Only show tools section if there are job results or a job title */}
         {(jobResults.length > 0 || currentJobTitle) && (
           <ToolsSection defaultLanguage={defaultLanguage} />
         )}
 
-        <JobResults
-          results={jobResults}
-          resumeFile={
-            resumeFile || (resumeText ? new Blob([resumeText], { type: 'text/plain' }) : null)
-          }
-          defaultLanguage={defaultLanguage}
-        />
+        {/* Pass both normal job results and ATS results to the JobResults component */}
+        {jobResults.length > 0 && (
+          <JobResults
+            results={jobResults}
+            resumeFile={getResumeBlob()}
+            defaultLanguage={defaultLanguage}
+            ats_analysis={atsAnalysis}
+          />
+        )}
       </Stack>
     </Container>
   );
