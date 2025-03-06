@@ -53,7 +53,10 @@ def generate_letter():
     # Get custom instruction if provided
     custom_instruction = data.get("custom_instruction", "")
 
-    result = generate_cover_letter(data["job_link"], custom_instruction)
+    # Get language preference (default to English)
+    language = data.get("language", "en")
+
+    result = generate_cover_letter(data["job_link"], custom_instruction, language)
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
@@ -143,3 +146,19 @@ def review_resume_manual():
 
     except Exception as e:
         return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
+    
+@api_bp.route("/supported-languages", methods=["GET"])
+def get_supported_languages():
+    """Endpoint to get supported languages for cover letter generation"""
+    supported_languages = [
+        {"code": "en", "name": "English"},
+        {"code": "es", "name": "Spanish (Español)"},
+        {"code": "fr", "name": "French (Français)"},
+        {"code": "de", "name": "German (Deutsch)"},
+        {"code": "zh", "name": "Chinese (中文)"},
+        {"code": "ja", "name": "Japanese (日本語)"},
+        {"code": "pt", "name": "Portuguese (Português)"},
+        {"code": "ru", "name": "Russian (Русский)"},
+        {"code": "ar", "name": "Arabic (العربية)"}
+    ]
+    return jsonify({"success": True, "languages": supported_languages}), 200

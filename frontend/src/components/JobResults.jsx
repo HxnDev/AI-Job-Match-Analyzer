@@ -9,13 +9,17 @@ import {
   Paper,
   Flex,
   Textarea,
+  Menu,
+  ActionIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { IconChevronDown, IconLanguage, IconPlus } from '@tabler/icons-react';
 import ResumeReview from './ResumeReview';
+import LanguageSelector from './LanguageSelector';
 
-const JobResults = ({ results, resumeFile }) => {
+const JobResults = ({ results, resumeFile, defaultLanguage = 'en' }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterOpened, { open: openCoverLetter, close: closeCoverLetter }] =
     useDisclosure(false);
@@ -24,6 +28,39 @@ const JobResults = ({ results, resumeFile }) => {
   const [loadingJobs, setLoadingJobs] = useState({});
   const [customInstruction, setCustomInstruction] = useState('');
   const [currentJobLink, setCurrentJobLink] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState(defaultLanguage);
+  const [availableLanguages, setAvailableLanguages] = useState([
+    { value: 'en', label: 'English' },
+    { value: 'es', label: 'Spanish (Español)' },
+    { value: 'fr', label: 'French (Français)' },
+    { value: 'de', label: 'German (Deutsch)' },
+  ]);
+
+  useEffect(() => {
+    // Update selected language when defaultLanguage prop changes
+    setSelectedLanguage(defaultLanguage);
+  }, [defaultLanguage]);
+
+  // Fetch available languages when component mounts
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const response = await axios.get('http://localhost:5050/api/supported-languages');
+        if (response.data.success) {
+          const formattedLanguages = response.data.languages.map((lang) => ({
+            value: lang.code,
+            label: lang.name,
+          }));
+          setAvailableLanguages(formattedLanguages);
+        }
+      } catch (error) {
+        console.error('Error fetching supported languages:', error);
+        // We'll keep the default languages already set
+      }
+    };
+
+    fetchLanguages();
+  }, []);
 
   if (!results || results.length === 0) return null;
 
@@ -34,6 +71,7 @@ const JobResults = ({ results, resumeFile }) => {
       const response = await axios.post('http://localhost:5050/api/cover-letter', {
         job_link: jobLink,
         custom_instruction: instruction,
+        language : selectedLanguage,
       });
 
       if (response.data.success) {
@@ -69,6 +107,12 @@ const JobResults = ({ results, resumeFile }) => {
     } catch (error) {
       return url;
     }
+  };
+
+  // Get language label for display
+  const getLanguageLabel = (code) => {
+    const language = availableLanguages.find(lang => lang.value === code);
+    return language ? language.label : 'English';
   };
 
   return (
@@ -175,26 +219,57 @@ const JobResults = ({ results, resumeFile }) => {
 
             {/* Action Buttons */}
             <Group grow>
-              <Button.Group>
-                <Button
-                  variant="light"
-                  color="blue"
-                  onClick={() => handleGenerateCoverLetter(job.job_link)}
-                  loading={loadingJobs[job.job_link]}
-                  style={{ flexGrow: 1 }}
-                >
-                  Generate Cover Letter
-                </Button>
-                <Button
-                  variant="light"
-                  color="teal"
-                  onClick={() => handleOpenCustomInstruction(job.job_link)}
-                  disabled={loadingJobs[job.job_link]}
-                  style={{ flexBasis: 'auto' }}
-                >
-                  +
-                </Button>
-              </Button.Group>
+              <Menu position="bottom-start" withinPortal>
+                <Menu.Target>
+                  <Button.Group style={{ flexGrow: 1 }}>
+                    <Button
+                      variant="light"
+                      color="blue"
+                      onClick={() => handleGenerateCoverLetter(job.job_link)}
+                      loading={loadingJobs[job.job_link]}
+                      style={{ flexGrow: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+                    >
+                      Generate Cover Letter
+                    </Button>
+                    <Button
+                      variant="light"
+                      color="blue"
+                      style={{ 
+                        flexGrow: 0, 
+                        paddingLeft: '8px', 
+                        paddingRight: '8px',
+                        borderTopLeftRadius: 0, 
+                        borderBottomLeftRadius: 0,
+                        borderLeft: '1px solid rgba(0, 0, 0, 0.1)'
+                      }}
+                    >
+                      <Group spacing={2}>
+                        <IconLanguage size={16} />
+                        <IconChevronDown size={16} />
+                      </Group>
+                    </Button>
+                  </Button.Group>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Label>Select Language</Menu.Label>
+                  {availableLanguages.map((lang) => (
+                    <Menu.Item
+                      key={lang.value}
+                      onClick={() => setSelectedLanguage(lang.value)}
+                      icon={lang.value === selectedLanguage ? '✓' : null}
+                    >
+                      {lang.label}
+                    </Menu.Item>
+                  ))}
+                  <Menu.Divider />
+                  <Menu.Item
+                    icon={<IconPlus size={14} />}
+                    onClick={() => handleOpenCustomInstruction(job.job_link)}
+                  >
+                    Custom Instructions
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <ResumeReview jobLink={job.job_link} resumeFile={resumeFile} />
             </Group>
           </Stack>
@@ -205,7 +280,12 @@ const JobResults = ({ results, resumeFile }) => {
       <Modal
         opened={coverLetterOpened}
         onClose={closeCoverLetter}
-        title="Generated Cover Letter"
+        title={
+          <Group>
+            <Text>Generated Cover Letter</Text>
+            <Badge color="blue">{getLanguageLabel(selectedLanguage)}</Badge>
+          </Group>
+        }
         size="lg"
       >
         <Stack>
@@ -230,6 +310,11 @@ const JobResults = ({ results, resumeFile }) => {
             minRows={4}
             value={customInstruction}
             onChange={(e) => setCustomInstruction(e.currentTarget.value)}
+          />
+          <LanguageSelector 
+            value={selectedLanguage} 
+            onChange={setSelectedLanguage}
+            label="Cover Letter Language"
           />
           <Group position="right">
             <Button variant="outline" onClick={closeCustomInstruction}>

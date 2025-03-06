@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Container,
   Stack,
@@ -28,6 +28,15 @@ const Home = () => {
   const [loading, handlers] = useDisclosure(false);
   const [showCustomInstructions, { toggle: toggleCustomInstructions }] = useDisclosure(false);
   const [customInstructions, setCustomInstructions] = useState('');
+  const [defaultLanguage, setDefaultLanguage] = useState('en');
+
+  // Load default language preference when component mounts
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('defaultLanguage');
+    if (savedLanguage) {
+      setDefaultLanguage(savedLanguage);
+    }
+  }, []);
 
   const handleAnalyze = async () => {
     if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
@@ -86,11 +95,26 @@ const Home = () => {
     }
   };
 
+  // Listen for changes to localStorage from other components
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedLanguage = localStorage.getItem('defaultLanguage');
+      if (savedLanguage) {
+        setDefaultLanguage(savedLanguage);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
   return (
     <Container size="lg" py="xl">
       <Stack spacing="xl">
         <Title order={1} align="center" color="blue">
-          Job Match Analyzer
+          JobFit
         </Title>
 
         <Text size="lg" color="dimmed" align="center">
@@ -146,6 +170,7 @@ const Home = () => {
           resumeFile={
             resumeFile || (resumeText ? new Blob([resumeText], { type: 'text/plain' }) : null)
           }
+          defaultLanguage={defaultLanguage}
         />
       </Stack>
     </Container>
