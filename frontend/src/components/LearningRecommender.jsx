@@ -34,8 +34,58 @@ import {
   IconBriefcase,
   IconAlertCircle,
   IconInfoCircle,
+  IconExternalLink,
 } from '@tabler/icons-react';
 import axios from 'axios';
+
+// Helper function to generate search URLs based on content
+const generateSearchUrl = (title, platform) => {
+  // Create properly encoded search terms
+  const encodedTitle = encodeURIComponent(title);
+
+  // Handle different platforms
+  if (platform?.toLowerCase().includes('youtube') || platform === 'YouTube') {
+    return `https://www.youtube.com/results?search_query=${encodedTitle}`;
+  } else if (platform?.toLowerCase().includes('udemy')) {
+    return `https://www.udemy.com/courses/search/?q=${encodedTitle}`;
+  } else if (platform?.toLowerCase().includes('coursera')) {
+    return `https://www.coursera.org/search?query=${encodedTitle}`;
+  } else if (platform?.toLowerCase().includes('pluralsight')) {
+    return `https://www.pluralsight.com/search?q=${encodedTitle}`;
+  } else if (platform?.toLowerCase().includes('medium')) {
+    return `https://medium.com/search?q=${encodedTitle}`;
+  } else if (platform?.toLowerCase().includes('tutorial')) {
+    return `https://www.google.com/search?q=${encodedTitle}+tutorial`;
+  } else {
+    // Generic search
+    return `https://www.google.com/search?q=${encodedTitle}`;
+  }
+};
+
+// Helper to check if a URL is valid
+const isValidURL = (string) => {
+  try {
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+};
+
+// Helper to get a better URL
+const getBetterUrl = (url, title, platform) => {
+  // Check if URL is missing, generic, or invalid
+  if (
+    !url ||
+    url === 'youtube.com' ||
+    url === 'coursera.org' ||
+    url === 'medium.com' ||
+    !isValidURL(url)
+  ) {
+    return generateSearchUrl(title, platform);
+  }
+  return url;
+};
 
 const LearningRecommender = ({
   skills = [],
@@ -137,11 +187,18 @@ const LearningRecommender = ({
         <Badge color="gray" variant="outline">
           {course.difficulty}
         </Badge>
-        {course.url && (
-          <Anchor href={course.url} target="_blank" size="sm">
-            Visit Platform
-          </Anchor>
-        )}
+        {/* Generate better URLs for course links */}
+        <Anchor
+          href={getBetterUrl(course.url, course.title, course.platform)}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="sm"
+        >
+          <Group spacing={4}>
+            <span>Visit Platform</span>
+            <IconExternalLink size={14} />
+          </Group>
+        </Anchor>
       </Group>
     </Card>
   );
@@ -161,13 +218,20 @@ const LearningRecommender = ({
           </Text>
         </div>
       </Group>
-      {article.url && (
-        <Group position="right" mt="xs">
-          <Anchor href={article.url} target="_blank" size="sm">
-            View Source
-          </Anchor>
-        </Group>
-      )}
+      {/* Generate better URLs for article links */}
+      <Group position="right" mt="xs">
+        <Anchor
+          href={getBetterUrl(article.url, article.title, article.source)}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="sm"
+        >
+          <Group spacing={4}>
+            <span>View Source</span>
+            <IconExternalLink size={14} />
+          </Group>
+        </Anchor>
+      </Group>
     </Card>
   );
 
@@ -186,13 +250,20 @@ const LearningRecommender = ({
           </Text>
         </div>
       </Group>
-      {video.url && (
-        <Group position="right" mt="xs">
-          <Anchor href={video.url} target="_blank" size="sm">
-            Watch on {video.platform}
-          </Anchor>
-        </Group>
-      )}
+      {/* Generate better URLs for video links */}
+      <Group position="right" mt="xs">
+        <Anchor
+          href={getBetterUrl(video.url, video.title, video.platform || 'YouTube')}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="sm"
+        >
+          <Group spacing={4}>
+            <span>Watch on {video.platform || 'YouTube'}</span>
+            <IconExternalLink size={14} />
+          </Group>
+        </Anchor>
+      </Group>
     </Card>
   );
 
@@ -340,13 +411,28 @@ const LearningRecommender = ({
                         {level.resources && level.resources.length > 0 ? (
                           level.resources.map((resource, idx) => (
                             <List.Item key={idx}>
-                              <Text weight={500} size="sm">
-                                {resource.title}
-                              </Text>
-                              <Text size="xs" color="dimmed">
-                                {resource.type} • {resource.source}
-                              </Text>
-                              <Text size="xs">{resource.description}</Text>
+                              <Group position="apart">
+                                <div>
+                                  <Text weight={500} size="sm">
+                                    {resource.title}
+                                  </Text>
+                                  <Text size="xs" color="dimmed">
+                                    {resource.type} • {resource.source}
+                                  </Text>
+                                  <Text size="xs">{resource.description}</Text>
+                                </div>
+                                <Anchor
+                                  href={generateSearchUrl(resource.title, resource.source)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  size="xs"
+                                >
+                                  <Group spacing={4}>
+                                    <span>Find Resource</span>
+                                    <IconExternalLink size={12} />
+                                  </Group>
+                                </Anchor>
+                              </Group>
                             </List.Item>
                           ))
                         ) : (
@@ -369,7 +455,25 @@ const LearningRecommender = ({
                       >
                         {level.projects && level.projects.length > 0 ? (
                           level.projects.map((project, idx) => (
-                            <List.Item key={idx}>{project}</List.Item>
+                            <List.Item key={idx}>
+                              <Group position="apart">
+                                <Text>{project}</Text>
+                                <Anchor
+                                  href={generateSearchUrl(
+                                    `${detailedPlan.skill} ${project} tutorial`,
+                                    null
+                                  )}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  size="xs"
+                                >
+                                  <Group spacing={4}>
+                                    <span>Find Tutorials</span>
+                                    <IconExternalLink size={12} />
+                                  </Group>
+                                </Anchor>
+                              </Group>
+                            </List.Item>
                           ))
                         ) : (
                           <Text color="dimmed">No projects specified</Text>

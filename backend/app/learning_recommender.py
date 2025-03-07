@@ -4,10 +4,52 @@ This module generates learning resources for skills development.
 """
 
 import json
+import logging
 import re
 from typing import Any, Dict, List
 
 import google.generativeai as genai
+
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def generate_search_url(title: str, platform: str = None) -> str:
+    """
+    Generate a search URL based on title and platform.
+
+    Args:
+        title: The title to search for
+        platform: The platform to search on (optional)
+
+    Returns:
+        str: A search URL
+    """
+    try:
+        # Create properly encoded search terms
+        encoded_title = title.replace(" ", "+")
+
+        # Generate URLs based on platform
+        if platform:
+            platform_lower = platform.lower()
+            if "youtube" in platform_lower:
+                return f"https://www.youtube.com/results?search_query={encoded_title}"
+            elif "udemy" in platform_lower:
+                return f"https://www.udemy.com/courses/search/?q={encoded_title}"
+            elif "coursera" in platform_lower:
+                return f"https://www.coursera.org/search?query={encoded_title}"
+            elif "pluralsight" in platform_lower:
+                return f"https://www.pluralsight.com/search?q={encoded_title}"
+            elif "medium" in platform_lower:
+                return f"https://medium.com/search?q={encoded_title}"
+
+        # Default to Google search
+        return f"https://www.google.com/search?q={encoded_title}"
+    except Exception as e:
+        logger.error(f"Error generating search URL: {str(e)}")
+        return "https://www.google.com"
 
 
 def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
@@ -76,9 +118,11 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
         }}
         
         IMPORTANT: 
-        - For URLs, only use generic domain URLs (like "coursera.org", "youtube.com", "medium.com")
-        - Do not create specific deep URLs that might not exist
-        - Do not include specific course IDs or video IDs in URLs
+        - For URLs, provide specific URLs when possible
+        - If you don't know the exact URL, use the format: https://www.platform.com/search?q=title
+        - For YouTube videos: https://www.youtube.com/results?search_query=title
+        - For Coursera courses: https://www.coursera.org/search?query=title
+        - For Udemy courses: https://www.udemy.com/courses/search/?q=title
         - Use double quotes for all JSON properties and string values
         - Use true/false without quotes for boolean values
         """
@@ -129,7 +173,7 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
         if "recommendations" not in recommendations or not isinstance(recommendations["recommendations"], list):
             return {"success": False, "error": "Invalid response structure"}
 
-        # Ensure each recommendation has the expected structure with defaults if missing
+        # Process and improve URLs in the recommendations
         for i, rec in enumerate(recommendations["recommendations"]):
             # Ensure skill property exists
             if "skill" not in rec:
@@ -149,50 +193,44 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
             if "learning_path" not in rec or not isinstance(rec["learning_path"], str):
                 rec["learning_path"] = "Start with fundamentals, practice with projects, advance to complex applications."
 
-            # Validate course objects
-            for j, course in enumerate(rec["courses"]):
-                if not isinstance(course, dict):
-                    rec["courses"][j] = {"title": "Recommended Course", "platform": "Online Learning Platform", "url": "coursera.org", "is_free": False, "difficulty": "Intermediate"}
-                else:
-                    # Ensure all course properties exist
-                    if "title" not in course:
-                        course["title"] = "Recommended Course"
-                    if "platform" not in course:
-                        course["platform"] = "Online Learning Platform"
-                    if "url" not in course:
-                        course["url"] = "coursera.org"
-                    if "is_free" not in course:
-                        course["is_free"] = False
-                    if "difficulty" not in course:
-                        course["difficulty"] = "Intermediate"
+            # Improve course URLs
+            for course in rec["courses"]:
+                if not course.get("url") or course.get("url") in ["coursera.org", "udemy.com", "pluralsight.com"]:
+                    course["url"] = generate_search_url(course.get("title", ""), course.get("platform", ""))
 
-            # Validate article objects
-            for j, article in enumerate(rec["articles"]):
-                if not isinstance(article, dict):
-                    rec["articles"][j] = {"title": "Recommended Article", "source": "Technical Blog", "url": "medium.com"}
-                else:
-                    # Ensure all article properties exist
-                    if "title" not in article:
-                        article["title"] = "Recommended Article"
-                    if "source" not in article:
-                        article["source"] = "Technical Blog"
-                    if "url" not in article:
-                        article["url"] = "medium.com"
+                # Ensure all course properties exist
+                if "title" not in course:
+                    course["title"] = "Recommended Course"
+                if "platform" not in course:
+                    course["platform"] = "Online Learning Platform"
+                if "is_free" not in course:
+                    course["is_free"] = False
+                if "difficulty" not in course:
+                    course["difficulty"] = "Intermediate"
 
-            # Validate video objects
-            for j, video in enumerate(rec["videos"]):
-                if not isinstance(video, dict):
-                    rec["videos"][j] = {"title": "Recommended Video", "creator": "Educational Channel", "platform": "YouTube", "url": "youtube.com"}
-                else:
-                    # Ensure all video properties exist
-                    if "title" not in video:
-                        video["title"] = "Recommended Video"
-                    if "creator" not in video:
-                        video["creator"] = "Educational Channel"
-                    if "platform" not in video:
-                        video["platform"] = "YouTube"
-                    if "url" not in video:
-                        video["url"] = "youtube.com"
+            # Improve article URLs
+            for article in rec["articles"]:
+                if not article.get("url") or article.get("url") in ["medium.com", "tutorialspoint.com", "w3schools.com"]:
+                    article["url"] = generate_search_url(article.get("title", ""), article.get("source", ""))
+
+                # Ensure all article properties exist
+                if "title" not in article:
+                    article["title"] = "Recommended Article"
+                if "source" not in article:
+                    article["source"] = "Technical Blog"
+
+            # Improve video URLs
+            for video in rec["videos"]:
+                if not video.get("url") or video.get("url") == "youtube.com":
+                    video["url"] = generate_search_url(video.get("title", ""), "YouTube")
+
+                # Ensure all video properties exist
+                if "title" not in video:
+                    video["title"] = "Recommended Video"
+                if "creator" not in video:
+                    video["creator"] = "Educational Channel"
+                if "platform" not in video:
+                    video["platform"] = "YouTube"
 
         return {"success": True, "recommendations": recommendations["recommendations"]}
 
@@ -237,7 +275,8 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
                             "type": "Course/Book/Documentation/Tutorial",
                             "title": "<title>",
                             "source": "<platform or author>",
-                            "description": "<brief description>"
+                            "description": "<brief description>",
+                            "url": "<search URL or direct link if known>"
                         }}
                     ],
                     "projects": ["<project 1>", "<project 2>"],
@@ -252,7 +291,8 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
                             "type": "Course/Book/Documentation/Tutorial",
                             "title": "<title>",
                             "source": "<platform or author>",
-                            "description": "<brief description>"
+                            "description": "<brief description>",
+                            "url": "<search URL or direct link if known>"
                         }}
                     ],
                     "projects": ["<project 1>", "<project 2>"],
@@ -267,7 +307,8 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
                             "type": "Course/Book/Documentation/Tutorial",
                             "title": "<title>",
                             "source": "<platform or author>",
-                            "description": "<brief description>"
+                            "description": "<brief description>",
+                            "url": "<search URL or direct link if known>"
                         }}
                     ],
                     "projects": ["<project 1>", "<project 2>"],
@@ -277,6 +318,10 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
         }}
         
         IMPORTANT:
+        - For URLs, provide real URLs when possible. If you don't know the specific URL, use search URLs in this format:
+          - For courses on Coursera: https://www.coursera.org/search?query=course+name
+          - For books on Amazon: https://www.amazon.com/s?k=book+title+author
+          - For YouTube videos: https://www.youtube.com/results?search_query=video+topic
         - Use double quotes for all property names and string values in the JSON
         - Ensure all arrays and objects are properly formatted
         """
@@ -381,11 +426,29 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
                 if "resources" not in level or not isinstance(level["resources"], list):
                     level["resources"] = []
 
-                # Check each resource
+                # Check each resource and improve URLs
                 for i, resource in enumerate(level["resources"]):
                     if not isinstance(resource, dict):
                         level["resources"][i] = {"type": "Resource", "title": "Learning Resource", "source": "Provider", "description": "Resource description"}
                     else:
+                        # Add better URLs for resources
+                        if "url" not in resource or not resource["url"]:
+                            resource_title = resource.get("title", "")
+                            resource_source = resource.get("source", "")
+                            resource_type = resource.get("type", "")
+
+                            # Generate a search URL based on title, source, and type
+                            if "course" in resource_type.lower():
+                                resource["url"] = generate_search_url(f"{resource_title} {resource_source} course", resource_source)
+                            elif "book" in resource_type.lower():
+                                resource["url"] = generate_search_url(f"{resource_title} {resource_source} book", "Amazon")
+                            elif "tutorial" in resource_type.lower():
+                                resource["url"] = generate_search_url(f"{resource_title} {resource_source} tutorial", resource_source)
+                            elif "documentation" in resource_type.lower():
+                                resource["url"] = generate_search_url(f"{resource_title} {resource_source} documentation", resource_source)
+                            else:
+                                resource["url"] = generate_search_url(f"{resource_title} {resource_source}", resource_source)
+
                         # Ensure all resource properties exist
                         for field in ["type", "title", "source", "description"]:
                             if field not in resource or not isinstance(resource[field], str):
