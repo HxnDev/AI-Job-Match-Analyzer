@@ -118,18 +118,51 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
     # Log for debugging
     logger.info(f"Analyzing resume against {len(job_details)} job entries")
 
-    # Format job details for the AI
+    # Format job details for the AI - with truncated job links
     jobs_text = []
     for i, job in enumerate(job_details):
+        # Create a copy of the job dictionary to avoid modifying the original
+        job_copy = job.copy()
+
+        # Store the original job link for later use but don't send to AI
+        if "job_link" in job_copy and job_copy["job_link"]:
+            # Store only a truncated version of the link or domain for reference
+            original_link = job_copy["job_link"]
+            try:
+                # Extract domain only if it's a URL
+                if original_link.startswith(("http://", "https://")):
+                    # Try to extract just the domain
+                    match = re.search(r"https?://([^/]+)", original_link)
+                    if match:
+                        domain = match.group(1)
+                        job_copy["job_link"] = f"Link from {domain}"
+                    else:
+                        # If domain extraction fails, just truncate
+                        job_copy["job_link"] = original_link[:50] + "..." if len(original_link) > 50 else original_link
+                else:
+                    # If it's not a URL, just truncate
+                    job_copy["job_link"] = original_link[:50] + "..." if len(original_link) > 50 else original_link
+            except Exception as e:
+                # If any error occurs, just truncate
+                logger.warning(f"Error processing job link: {str(e)}")
+                job_copy["job_link"] = original_link[:50] + "..." if len(original_link) > 50 else original_link
+
         job_text = f"Job #{i+1}:\n"
-        job_text += f"Title: {job.get('job_title', 'Unknown Position')}\n"
-        job_text += f"Company: {job.get('company_name', 'Unknown Company')}\n"
+        job_text += f"Title: {job_copy.get('job_title', 'Unknown Position')}\n"
+        job_text += f"Company: {job_copy.get('company_name', 'Unknown Company')}\n"
 
-        if job.get("job_description"):
-            job_text += f"Description: {job.get('job_description')}\n"
+        if job_copy.get("job_description"):
+            # Truncate job description if it's very long
+            job_desc = job_copy.get("job_description")
+            if len(job_desc) > 2000:  # Set a reasonable limit
+                logger.info(f"Truncating job description for job #{i+1} from {len(job_desc)} to 2000 chars")
+                job_text += f"Description: {job_desc[:2000]}...\n"
+            else:
+                job_text += f"Description: {job_desc}\n"
 
-        if job.get("job_link"):
-            job_text += f"URL: {job.get('job_link')}\n"
+        # We've already handled the job link above, but we'll add a reference without the full URL
+        if job_copy.get("job_link"):
+            job_text += f"URL: {job_copy.get('job_link')}\n"
 
         jobs_text.append(job_text)
 
@@ -223,6 +256,11 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
         if not isinstance(analysis, dict) or "jobs" not in analysis:
             logger.error(f"Invalid response structure: {analysis}")
             return {"success": False, "error": "Invalid response structure: 'jobs' field missing"}
+
+        # Restore original job links where available
+        for i, job_result in enumerate(analysis["jobs"]):
+            if i < len(job_details) and "job_link" in job_details[i]:
+                job_result["job_link"] = job_details[i]["job_link"]
 
         # Ensure recommendations and required fields
         for job in analysis["jobs"]:
