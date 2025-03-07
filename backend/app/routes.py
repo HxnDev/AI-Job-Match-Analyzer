@@ -23,13 +23,15 @@ api_bp = Blueprint("api", __name__, url_prefix="/api")
 def analyze():
     """Endpoint to analyze resume against job descriptions"""
     if "resume" not in request.files:
+        logger.error("No resume file received")
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
-    if "job_links" not in request.form:
-        return jsonify({"success": False, "error": "No job links provided"}), 400
+    job_details_str = request.form.get("job_links", "[]")  # Default to an empty list if missing
 
     resume = request.files["resume"]
     job_details_str = request.form["job_links"]
+    logger.info(f"Received resume: {resume.filename}")
+    logger.info(f"Received job links: {job_details_str[:200]}")  # Print only first 200 chars
 
     # Parse job details with better error handling
     try:
@@ -40,7 +42,7 @@ def analyze():
 
         # Ensure it's a list (even if a single job came through)
         if not isinstance(job_details, list):
-            job_details = [job_details]
+            job_details = [job_details]  # Ensure it’s always a list
 
     except json.JSONDecodeError as e:
         # Log the error and problematic string for debugging
