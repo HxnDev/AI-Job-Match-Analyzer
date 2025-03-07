@@ -37,13 +37,13 @@ const Home = () => {
   const [jobDescription, setJobDescription] = useState('');
   const [atsAnalysis, setAtsAnalysis] = useState(null);
 
-  // Load default language preference when component mounts
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('defaultLanguage');
-    if (savedLanguage) {
-      setDefaultLanguage(savedLanguage);
-    }
-  }, []);
+  // // Load default language preference when component mounts
+  // useEffect(() => {
+  //   const savedLanguage = localStorage.getItem('defaultLanguage');
+  //   if (savedLanguage) {
+  //     setDefaultLanguage(savedLanguage);
+  //   }
+  // }, []);
 
   const handleAnalyze = async () => {
     if ((!resumeFile && !resumeText) || jobLinks.length === 0) {
@@ -66,7 +66,22 @@ const Home = () => {
       formData.append('resume', textFile, 'resume.txt');
     }
 
-    formData.append('job_links', JSON.stringify(jobLinks));
+    // UPDATED: Improved job links handling with proper error handling
+    try {
+      // Convert array to a well-formatted JSON string with proper error handling
+      const jobLinksJson = JSON.stringify(jobLinks);
+      console.log("Sending job links:", jobLinksJson); // Debug log
+      formData.append('job_links', jobLinksJson);
+    } catch (error) {
+      console.error("Error stringifying job links:", error);
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to process job links',
+        color: 'red',
+      });
+      handlers.close();
+      return;
+    }
 
     // Add custom instructions if provided
     if (customInstructions.trim()) {
@@ -115,20 +130,20 @@ const Home = () => {
     }
   };
 
-  // Listen for changes to localStorage from other components
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const savedLanguage = localStorage.getItem('defaultLanguage');
-      if (savedLanguage) {
-        setDefaultLanguage(savedLanguage);
-      }
-    };
+  // // Listen for changes to localStorage from other components
+  // useEffect(() => {
+  //   const handleStorageChange = () => {
+  //     const savedLanguage = localStorage.getItem('defaultLanguage');
+  //     if (savedLanguage) {
+  //       setDefaultLanguage(savedLanguage);
+  //     }
+  //   };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  //   window.addEventListener('storage', handleStorageChange);
+  //   return () => {
+  //     window.removeEventListener('storage', handleStorageChange);
+  //   };
+  // }, []);
 
   // Prepare resume blob for components
   const getResumeBlob = () => {

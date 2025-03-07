@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify, request
+import json
+import logging
 
 from .ats_analyzer import analyze_ats_compatibility, generate_optimized_resume_sections
 from .cover_letter import generate_cover_letter
@@ -8,6 +10,9 @@ from .learning_recommender import generate_learning_recommendations, generate_de
 from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Create blueprint
 api_bp = Blueprint("api", __name__, url_prefix="/api")
@@ -23,7 +28,25 @@ def analyze():
         return jsonify({"success": False, "error": "No job links provided"}), 400
 
     resume = request.files["resume"]
-    job_links = request.form["job_links"]
+    job_links_str = request.form["job_links"]
+
+    # UPDATED: More robust JSON parsing with better error handling
+    try:
+        # Parse JSON string with better error handling
+        job_links = json.loads(job_links_str)
+        
+        # Log the parsed job links for debugging
+        logger.info(f"Parsed job links: {job_links}")
+        
+        # Ensure it's a list (even if a single string came through)
+        if not isinstance(job_links, list):
+            job_links = [job_links]
+            
+    except json.JSONDecodeError as e:
+        # Log the error and problematic string for debugging
+        logger.error(f"JSON parsing error: {str(e)}")
+        logger.error(f"Problematic JSON string: {job_links_str[:100]}")
+        return jsonify({"success": False, "error": f"Invalid job links format: {str(e)}"}), 400
 
     # Get custom instructions if provided
     custom_instructions = request.form.get("custom_instructions", "")
@@ -44,6 +67,9 @@ def analyze():
     if result.get("success", False):
         return jsonify(result), 200
     else:
+        # UPDATED: Include more detailed error information
+        error_msg = result.get("error", "Unknown error")
+        logger.error(f"Resume analysis failed: {error_msg}")
         return jsonify(result), 400
 
 @api_bp.route("/ats-check", methods=["POST"])
