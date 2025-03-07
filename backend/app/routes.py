@@ -1,14 +1,15 @@
-from flask import Blueprint, jsonify, request
 import json
 import logging
+
+from flask import Blueprint, jsonify, request
 
 from .ats_analyzer import analyze_ats_compatibility, generate_optimized_resume_sections
 from .cover_letter import generate_cover_letter
 from .email_reply import generate_email_reply
-from .job_scraper import scrape_job_description
-from .learning_recommender import generate_learning_recommendations, generate_detailed_learning_plan
+from .learning_recommender import generate_detailed_learning_plan, generate_learning_recommendations
 from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,25 +29,24 @@ def analyze():
         return jsonify({"success": False, "error": "No job links provided"}), 400
 
     resume = request.files["resume"]
-    job_links_str = request.form["job_links"]
+    job_details_str = request.form["job_links"]
 
-    # UPDATED: More robust JSON parsing with better error handling
+    # Parse job details with better error handling
     try:
-        # Parse JSON string with better error handling
-        job_links = json.loads(job_links_str)
-        
-        # Log the parsed job links for debugging
-        logger.info(f"Parsed job links: {job_links}")
-        
-        # Ensure it's a list (even if a single string came through)
-        if not isinstance(job_links, list):
-            job_links = [job_links]
-            
+        job_details = json.loads(job_details_str)
+
+        # Log the parsed job details for debugging
+        logger.info(f"Parsed job details: {job_details}")
+
+        # Ensure it's a list (even if a single job came through)
+        if not isinstance(job_details, list):
+            job_details = [job_details]
+
     except json.JSONDecodeError as e:
         # Log the error and problematic string for debugging
         logger.error(f"JSON parsing error: {str(e)}")
-        logger.error(f"Problematic JSON string: {job_links_str[:100]}")
-        return jsonify({"success": False, "error": f"Invalid job links format: {str(e)}"}), 400
+        logger.error(f"Problematic JSON string: {job_details_str[:100]}")
+        return jsonify({"success": False, "error": f"Invalid job details format: {str(e)}"}), 400
 
     # Get custom instructions if provided
     custom_instructions = request.form.get("custom_instructions", "")
@@ -62,15 +62,16 @@ def analyze():
             400,
         )
 
-    result = analyze_resume(resume, job_links, custom_instructions)
+    result = analyze_resume(resume, job_details, custom_instructions)
 
     if result.get("success", False):
         return jsonify(result), 200
     else:
-        # UPDATED: Include more detailed error information
+        # Include more detailed error information
         error_msg = result.get("error", "Unknown error")
         logger.error(f"Resume analysis failed: {error_msg}")
         return jsonify(result), 400
+
 
 @api_bp.route("/ats-check", methods=["POST"])
 def ats_check():
@@ -87,6 +88,7 @@ def ats_check():
         # Extract resume text
         if resume.filename.endswith(".pdf"):
             from .resume_analyzer import extract_text_from_pdf
+
             resume_content = extract_text_from_pdf(resume)
         else:
             resume_content = resume.read().decode("utf-8")
@@ -118,6 +120,7 @@ def ats_optimize():
         # Extract resume text
         if resume.filename.endswith(".pdf"):
             from .resume_analyzer import extract_text_from_pdf
+
             resume_content = extract_text_from_pdf(resume)
         else:
             resume_content = resume.read().decode("utf-8")
@@ -151,12 +154,13 @@ def learning_plan():
     result = generate_detailed_learning_plan(data["skill"])
     return jsonify(result), 200 if result.get("success", False) else 400
 
+
 @api_bp.route("/cover-letter", methods=["POST"])
 def generate_letter():
     """Endpoint to generate a cover letter"""
     data = request.json
-    if not data or "job_link" not in data:
-        return jsonify({"success": False, "error": "Missing job link"}), 400
+    if not data or not all(key in data for key in ["company_name", "job_title", "job_description"]):
+        return jsonify({"success": False, "error": "Missing required job details"}), 400
 
     # Get custom instruction if provided
     custom_instruction = data.get("custom_instruction", "")
@@ -164,7 +168,10 @@ def generate_letter():
     # Get language preference (default to English)
     language = data.get("language", "en")
 
-    result = generate_cover_letter(data["job_link"], custom_instruction, language)
+    # Format job details for the cover letter generator
+    job_details = {"company_name": data["company_name"], "job_title": data["job_title"], "job_description": data["job_description"], "job_link": data.get("job_link", "")}
+
+    result = generate_cover_letter(job_details, custom_instruction, language)
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
@@ -178,6 +185,9 @@ def motivational_letter():
     # Get job description if available
     job_description = data.get("job_description", "")
 
+    # Get company name if available
+    company_name = data.get("company_name", "")
+
     # Get custom instruction if provided
     custom_instruction = data.get("custom_instruction", "")
 
@@ -185,7 +195,10 @@ def motivational_letter():
     if custom_instruction and custom_instruction.strip():
         job_description = f"{job_description}\n\nAdditional requirements: {custom_instruction}"
 
-    result = generate_motivational_letter(data["job_title"])
+    # Create job details dictionary
+    job_details = {"job_title": data["job_title"], "job_description": job_description, "company_name": company_name}
+
+    result = generate_motivational_letter(job_details)
     return jsonify(result), 200 if result.get("success", False) else 400
 
 
@@ -218,58 +231,13 @@ def review_resume():
     if "resume" not in request.files:
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
-    if "job_link" not in request.form:
-        return jsonify({"success": False, "error": "No job link provided"}), 400
-
-    resume = request.files["resume"]
-    job_link = request.form["job_link"]
-
-    # Get custom instructions if provided
-    custom_instructions = request.form.get("custom_instructions", "")
-
-    if not resume.filename.endswith((".pdf", ".txt")):
-        return jsonify({"success": False, "error": "Invalid file format. Please upload PDF or TXT"}), 400
-
-    # Get job description
-    job_result = scrape_job_description(job_link)
-    if not job_result["success"]:
-        return jsonify(job_result), 400
-
-    try:
-        # Extract resume text (reuse from analyze_resume)
-        if resume.filename.endswith(".pdf"):
-            from .resume_analyzer import extract_text_from_pdf
-
-            resume_content = extract_text_from_pdf(resume)
-        else:
-            resume_content = resume.read().decode("utf-8")
-
-        # Generate review
-        review_result = generate_resume_review(resume_content, job_result["description"], custom_instructions)
-        if review_result.get("success", False):
-            return jsonify(review_result), 200
-        else:
-            # Return more detailed error for debugging
-            error_msg = review_result.get("error", "Unknown error")
-            raw_response = review_result.get("raw_response", "")
-
-            return jsonify({"success": False, "error": error_msg, "debug_info": raw_response}), 400
-
-    except Exception as e:
-        return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
-
-
-@api_bp.route("/review-resume-manual", methods=["POST"])
-def review_resume_manual():
-    """Endpoint to get detailed resume review with manual job description"""
-    if "resume" not in request.files:
-        return jsonify({"success": False, "error": "No resume file provided"}), 400
-
     if "job_description" not in request.form:
         return jsonify({"success": False, "error": "No job description provided"}), 400
 
     resume = request.files["resume"]
     job_description = request.form["job_description"]
+    job_title = request.form.get("job_title", "")
+    company_name = request.form.get("company_name", "")
 
     # Get custom instructions if provided
     custom_instructions = request.form.get("custom_instructions", "")
@@ -286,9 +254,24 @@ def review_resume_manual():
         else:
             resume_content = resume.read().decode("utf-8")
 
+        # Add job title and company name to context if provided
+        job_context = job_description
+        if job_title and company_name:
+            job_context = f"Job Title: {job_title}\nCompany: {company_name}\n\n{job_description}"
+        elif job_title:
+            job_context = f"Job Title: {job_title}\n\n{job_description}"
+        elif company_name:
+            job_context = f"Company: {company_name}\n\n{job_description}"
+
         # Generate review
-        review_result = generate_resume_review(resume_content, job_description, custom_instructions)
-        return jsonify(review_result), 200 if review_result["success"] else 400
+        review_result = generate_resume_review(resume_content, job_context, custom_instructions)
+        if review_result.get("success", False):
+            return jsonify(review_result), 200
+        else:
+            # Return more detailed error for debugging
+            error_msg = review_result.get("error", "Unknown error")
+            raw_response = review_result.get("raw_response", "")
+            return jsonify({"success": False, "error": error_msg, "debug_info": raw_response}), 400
 
     except Exception as e:
         return jsonify({"success": False, "error": f"Error processing resume: {str(e)}"}), 400
@@ -303,8 +286,6 @@ def get_supported_languages():
         {"code": "fr", "name": "French (Français)"},
         {"code": "de", "name": "German (Deutsch)"},
         {"code": "zh", "name": "Chinese (中文)"},
-        {"code": "ja", "name": "Japanese (日本語)"},
-        {"code": "pt", "name": "Portuguese (Português)"},
         {"code": "ru", "name": "Russian (Русский)"},
         {"code": "ar", "name": "Arabic (العربية)"},
     ]

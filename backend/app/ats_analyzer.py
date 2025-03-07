@@ -5,7 +5,7 @@ This module evaluates resume compatibility with Applicant Tracking Systems.
 
 import json
 import re
-from typing import Dict, Any, List, Union
+from typing import Any, Dict
 
 import google.generativeai as genai
 
@@ -85,15 +85,12 @@ def analyze_ats_compatibility(resume_content: str) -> Dict[str, Any]:
         analysis = json.loads(json_str.group(1))
 
         # Validate and ensure all required fields
-        required_fields = ["ats_score", "summary", "format_issues", "content_issues", 
-                          "keyword_issues", "improvement_suggestions", "good_practices"]
-        
+        required_fields = ["ats_score", "summary", "format_issues", "content_issues", "keyword_issues", "improvement_suggestions", "good_practices"]
+
         for field in required_fields:
             if field not in analysis:
-                analysis[field] = [] if field in ["format_issues", "content_issues", 
-                                                "keyword_issues", "improvement_suggestions", 
-                                                "good_practices"] else ""
-        
+                analysis[field] = [] if field in ["format_issues", "content_issues", "keyword_issues", "improvement_suggestions", "good_practices"] else ""
+
         if "ats_score" not in analysis or not isinstance(analysis["ats_score"], (int, float)):
             analysis["ats_score"] = 70  # Default score if missing
 

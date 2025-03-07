@@ -15,16 +15,15 @@ import {
   Card,
   Collapse,
   ActionIcon,
-  Grid,
   Anchor,
   Loader,
   Box,
   Alert,
+  Tooltip,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   IconBrandYoutube,
-  IconBook,
   IconSchool,
   IconArticle,
   IconChevronDown,
@@ -32,13 +31,18 @@ import {
   IconArrowRight,
   IconDeviceDesktop,
   IconRocket,
-  IconBulb,
   IconBriefcase,
   IconAlertCircle,
+  IconInfoCircle,
 } from '@tabler/icons-react';
 import axios from 'axios';
 
-const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }) => {
+const LearningRecommender = ({
+  skills = [],
+  title = 'Learning Recommendations',
+  disabled = false,
+  disabledTooltip = 'No skills to learn',
+}) => {
   const [opened, { open, close }] = useDisclosure(false);
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -50,21 +54,20 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
   const [activeTab, setActiveTab] = useState('recommendations');
 
   const handleGetRecommendations = async () => {
-    if (!skills || skills.length === 0) {
-      alert('No skills provided');
-      return;
-    }
+    // Add fallback skills if none provided or empty array
+    const skillsToUse =
+      skills && skills.length > 0 ? skills : ['Programming', 'Project Management', 'Communication'];
 
     setLoading(true);
     setError(null);
     try {
-      console.log('Requesting learning recommendations for skills:', skills);
+      console.log('Requesting learning recommendations for skills:', skillsToUse);
       const response = await axios.post('http://localhost:5050/api/learning-recommendations', {
-        skills,
+        skills: skillsToUse,
       });
 
       console.log('Received response:', response.data);
-      
+
       if (response.data.success && response.data.recommendations) {
         setRecommendations(response.data.recommendations);
         open();
@@ -73,7 +76,9 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
       }
     } catch (error) {
       console.error('Error getting learning recommendations:', error);
-      setError(error.response?.data?.error || 'Error getting learning recommendations. Please try again.');
+      setError(
+        error.response?.data?.error || 'Error getting learning recommendations. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -92,7 +97,7 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
       });
 
       console.log('Received detailed plan response:', response.data);
-      
+
       if (response.data.success && response.data.learning_plan) {
         setDetailedPlan(response.data.learning_plan);
       } else {
@@ -100,7 +105,9 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
       }
     } catch (error) {
       console.error('Error getting detailed learning plan:', error);
-      setError(error.response?.data?.error || 'Error getting detailed learning plan. Please try again.');
+      setError(
+        error.response?.data?.error || 'Error getting detailed learning plan. Please try again.'
+      );
     } finally {
       setDetailedPlanLoading(false);
     }
@@ -289,90 +296,97 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
         </Group>
 
         <Accordion>
-          {detailedPlan.levels && detailedPlan.levels.map((level, index) => (
-            <Accordion.Item key={index} value={level.level || `level-${index}`}>
-              <Accordion.Control>
-                <Group>
-                  <Badge color={index === 0 ? 'green' : index === 1 ? 'blue' : 'violet'}>
-                    {level.level || `Level ${index + 1}`}
-                  </Badge>
-                  <Text>{level.description ? (level.description.length > 50 ? level.description.substring(0, 50) + '...' : level.description) : 'Description unavailable'}</Text>
-                </Group>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack spacing="md">
-                  <div>
-                    <Text weight={500} size="sm">
-                      Key Concepts
-                    </Text>
-                    <Group spacing="xs" mt="xs">
-                      {level.key_concepts && level.key_concepts.length > 0 ? (
-                        level.key_concepts.map((concept, idx) => (
-                          <Badge key={idx} variant="outline">
-                            {concept}
-                          </Badge>
-                        ))
-                      ) : (
-                        <Text color="dimmed">No key concepts specified</Text>
-                      )}
-                    </Group>
-                  </div>
-
-                  <div>
-                    <Text weight={500} size="sm">
-                      Recommended Resources
-                    </Text>
-                    <List mt="xs">
-                      {level.resources && level.resources.length > 0 ? (
-                        level.resources.map((resource, idx) => (
-                          <List.Item key={idx}>
-                            <Text weight={500} size="sm">
-                              {resource.title}
-                            </Text>
-                            <Text size="xs" color="dimmed">
-                              {resource.type} • {resource.source}
-                            </Text>
-                            <Text size="xs">{resource.description}</Text>
-                          </List.Item>
-                        ))
-                      ) : (
-                        <Text color="dimmed">No resources specified</Text>
-                      )}
-                    </List>
-                  </div>
-
-                  <div>
-                    <Text weight={500} size="sm">
-                      Projects to Build
-                    </Text>
-                    <List
-                      mt="xs"
-                      icon={
-                        <ThemeIcon color="blue" size={24} radius="xl">
-                          <IconBriefcase size={16} />
-                        </ThemeIcon>
-                      }
-                    >
-                      {level.projects && level.projects.length > 0 ? (
-                        level.projects.map((project, idx) => (
-                          <List.Item key={idx}>{project}</List.Item>
-                        ))
-                      ) : (
-                        <Text color="dimmed">No projects specified</Text>
-                      )}
-                    </List>
-                  </div>
-
+          {detailedPlan.levels &&
+            detailedPlan.levels.map((level, index) => (
+              <Accordion.Item key={index} value={level.level || `level-${index}`}>
+                <Accordion.Control>
                   <Group>
-                    <IconDeviceDesktop size={16} />
-                    <Text size="sm">
-                      Estimated Time Investment: {level.estimated_time || 'Not specified'}
+                    <Badge color={index === 0 ? 'green' : index === 1 ? 'blue' : 'violet'}>
+                      {level.level || `Level ${index + 1}`}
+                    </Badge>
+                    <Text>
+                      {level.description
+                        ? level.description.length > 50
+                          ? level.description.substring(0, 50) + '...'
+                          : level.description
+                        : 'Description unavailable'}
                     </Text>
                   </Group>
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          ))}
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack spacing="md">
+                    <div>
+                      <Text weight={500} size="sm">
+                        Key Concepts
+                      </Text>
+                      <Group spacing="xs" mt="xs">
+                        {level.key_concepts && level.key_concepts.length > 0 ? (
+                          level.key_concepts.map((concept, idx) => (
+                            <Badge key={idx} variant="outline">
+                              {concept}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Text color="dimmed">No key concepts specified</Text>
+                        )}
+                      </Group>
+                    </div>
+
+                    <div>
+                      <Text weight={500} size="sm">
+                        Recommended Resources
+                      </Text>
+                      <List mt="xs">
+                        {level.resources && level.resources.length > 0 ? (
+                          level.resources.map((resource, idx) => (
+                            <List.Item key={idx}>
+                              <Text weight={500} size="sm">
+                                {resource.title}
+                              </Text>
+                              <Text size="xs" color="dimmed">
+                                {resource.type} • {resource.source}
+                              </Text>
+                              <Text size="xs">{resource.description}</Text>
+                            </List.Item>
+                          ))
+                        ) : (
+                          <Text color="dimmed">No resources specified</Text>
+                        )}
+                      </List>
+                    </div>
+
+                    <div>
+                      <Text weight={500} size="sm">
+                        Projects to Build
+                      </Text>
+                      <List
+                        mt="xs"
+                        icon={
+                          <ThemeIcon color="blue" size={24} radius="xl">
+                            <IconBriefcase size={16} />
+                          </ThemeIcon>
+                        }
+                      >
+                        {level.projects && level.projects.length > 0 ? (
+                          level.projects.map((project, idx) => (
+                            <List.Item key={idx}>{project}</List.Item>
+                          ))
+                        ) : (
+                          <Text color="dimmed">No projects specified</Text>
+                        )}
+                      </List>
+                    </div>
+
+                    <Group>
+                      <IconDeviceDesktop size={16} />
+                      <Text size="sm">
+                        Estimated Time Investment: {level.estimated_time || 'Not specified'}
+                      </Text>
+                    </Group>
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            ))}
         </Accordion>
       </Stack>
     );
@@ -380,7 +394,7 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
 
   const renderErrorAlert = () => {
     if (!error) return null;
-    
+
     return (
       <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red" mb="md">
         {error}
@@ -388,19 +402,34 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
     );
   };
 
+  const button = (
+    <Tooltip
+      label={disabled ? disabledTooltip : 'Get personalized learning resources'}
+      position="top"
+      disabled={!disabled}
+    >
+      <div style={{ width: '100%' }}>
+        {' '}
+        {/* Wrapper div to make tooltip work with disabled button */}
+        <Button
+          onClick={handleGetRecommendations}
+          loading={loading}
+          leftIcon={<IconSchool size={16} />}
+          color="violet"
+          variant="gradient"
+          gradient={{ from: 'indigo', to: 'violet' }}
+          fullWidth
+          disabled={disabled}
+        >
+          Get Learning Resources
+        </Button>
+      </div>
+    </Tooltip>
+  );
+
   return (
     <>
-      <Button
-        onClick={handleGetRecommendations}
-        loading={loading}
-        leftIcon={<IconSchool size={16} />}
-        color="violet"
-        variant="light"
-        fullWidth
-        disabled={!skills || skills.length === 0}
-      >
-        Get Learning Resources
-      </Button>
+      {button}
 
       <Modal
         opened={opened}
@@ -425,16 +454,21 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
 
             <Tabs.Panel value="recommendations" pt="md">
               <Box mt="md">
+                {skills && skills.length === 0 && (
+                  <Alert icon={<IconInfoCircle size={16} />} color="blue" mb="md">
+                    You have all the skills needed for this job! These are general learning
+                    resources to help you excel.
+                  </Alert>
+                )}
+
                 {renderErrorAlert()}
-                
+
                 {recommendations && recommendations.length > 0 ? (
                   <>
                     <Text size="sm" color="dimmed" mb="md">
                       Click on a skill to view learning resources and recommendations.
                     </Text>
-                    {recommendations.map((skillData, index) =>
-                      renderSkillRecommendations(skillData)
-                    )}
+                    {recommendations.map((skillData) => renderSkillRecommendations(skillData))}
                   </>
                 ) : !error ? (
                   <Text color="dimmed">No recommendations available</Text>

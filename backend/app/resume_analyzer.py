@@ -7,16 +7,18 @@ import io
 import json
 import logging
 import re
-from typing import BinaryIO, Dict, Union, List, Any
+from typing import BinaryIO, Dict, List, Union
 
 import google.generativeai as genai
 from PyPDF2 import PdfReader
 
 from .ats_analyzer import analyze_ats_compatibility
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
     """
@@ -44,13 +46,13 @@ def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
         raise ValueError(f"Error reading PDF: {str(e)}") from e
 
 
-def analyze_resume(resume: BinaryIO, job_links: str, custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
+def analyze_resume(resume: BinaryIO, job_details: List[Dict], custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
     """
     Analyze a resume against job descriptions using AI.
 
     Args:
         resume: File object containing the resume
-        job_links: JSON string containing job links
+        job_details: List of dictionaries containing job details (title, company, description)
         custom_instructions: Optional custom instructions for the review
 
     Returns:
@@ -72,129 +74,98 @@ def analyze_resume(resume: BinaryIO, job_links: str, custom_instructions: str = 
         except ValueError as e:
             return {"success": False, "error": str(e)}
 
-        # UPDATED: Ensure job_links is properly handled regardless of type
-        # This is a defensive check to handle different possible input types
-        if isinstance(job_links, str):
-            try:
-                # Try to parse it as JSON if it's a string
-                job_links_parsed = json.loads(job_links)
-            except json.JSONDecodeError as e:
-                logger.error(f"Error parsing job links as JSON: {str(e)}")
-                return {"success": False, "error": f"Invalid job links format: {str(e)}"}
-        else:
-            # Use as is if it's already a list or other type
-            job_links_parsed = job_links
-
-        # Ensure it's a list
-        if not isinstance(job_links_parsed, list):
-            job_links_parsed = [job_links_parsed] if job_links_parsed else []
+        # Validate job details
+        if not isinstance(job_details, list):
+            # Convert to list if it's not already
+            job_details = [job_details] if job_details else []
 
         # Log for debugging
-        logger.info(f"Processing {len(job_links_parsed)} job links")
+        logger.info(f"Processing {len(job_details)} job entries")
 
         # Generate AI analysis
-        analysis_result = generate_analysis(resume_content, job_links_parsed, custom_instructions)
+        analysis_result = generate_analysis(resume_content, job_details, custom_instructions)
 
         if not analysis_result["success"]:
             return analysis_result
-            
-        # Add ATS compatibility check
-        ats_result = analyze_ats_compatibility(resume_content)
-        
-        if ats_result["success"]:
-            return {
-                "success": True, 
-                "results": analysis_result["jobs"],
-                "ats_analysis": ats_result["analysis"]
-            }
+
+        # Add ATS compatibility check using the first job description if available
+        ats_result = None
+        if job_details and "job_description" in job_details[0] and job_details[0]["job_description"]:
+            ats_result = analyze_ats_compatibility(resume_content)
+
+        if ats_result and ats_result["success"]:
+            return {"success": True, "results": analysis_result["jobs"], "ats_analysis": ats_result["analysis"]}
         else:
             return {"success": True, "results": analysis_result["jobs"]}
 
     except Exception as e:
         logger.error(f"Error in analyze_resume: {str(e)}", exc_info=True)
         return {"success": False, "error": f"Error analyzing resume: {str(e)}"}
-    
 
-def generate_analysis(resume_content: str, job_links: List[str], custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
+
+def generate_analysis(resume_content: str, job_details: List[Dict], custom_instructions: str = "") -> Dict[str, Union[bool, list, str]]:
     """
-    Generate AI analysis for the resume and job links.
+    Generate AI analysis for the resume and job details.
 
     Args:
         resume_content: Text content of the resume
-        job_links: List of job links to analyze against
+        job_details: List of dictionaries containing job information
         custom_instructions: Optional custom instructions for the review
 
     Returns:
         dict: Analysis results from the AI model
     """
-    # UPDATED: Ensure job_links is properly handled as a list
-    if not isinstance(job_links, list):
-        try:
-            # Try to convert to list if it's a string or other type
-            if job_links:
-                job_links = [job_links] if not isinstance(job_links, list) else job_links
-            else:
-                job_links = []
-        except Exception as e:
-            logger.error(f"Error converting job_links to list: {str(e)}")
-            job_links = []
-    
-    # NEW: Truncate long URLs to prevent JSON parsing issues in AI response
-    truncated_job_links = []
-    for link in job_links:
-        # Extract domain and basic path, limit URL to 100 characters
-        try:
-            from urllib.parse import urlparse
-            parsed_url = urlparse(str(link))
-            domain = parsed_url.netloc
-            path = parsed_url.path[:30] if parsed_url.path else ""
-            
-            # Create a simplified URL
-            simplified_url = f"{parsed_url.scheme}://{domain}{path}..."
-            truncated_job_links.append(simplified_url)
-            logger.info(f"Truncated URL: {simplified_url}")
-        except Exception as e:
-            # If parsing fails, use a very simplified version
-            logger.error(f"Error truncating URL: {str(e)}")
-            truncated_job_links.append(str(link)[:80] + "...")
-    
-    # Format job links for better AI understanding using truncated links
-    job_links_text = "\n".join([link for link in truncated_job_links if link])
-    
     # Log for debugging
-    logger.info(f"Analyzing resume against {len(job_links)} job links (truncated)")
-    
+    logger.info(f"Analyzing resume against {len(job_details)} job entries")
+
+    # Format job details for the AI
+    jobs_text = []
+    for i, job in enumerate(job_details):
+        job_text = f"Job #{i+1}:\n"
+        job_text += f"Title: {job.get('job_title', 'Unknown Position')}\n"
+        job_text += f"Company: {job.get('company_name', 'Unknown Company')}\n"
+
+        if job.get("job_description"):
+            job_text += f"Description: {job.get('job_description')}\n"
+
+        if job.get("job_link"):
+            job_text += f"URL: {job.get('job_link')}\n"
+
+        jobs_text.append(job_text)
+
+    # Join all job details
+    all_jobs_text = "\n\n".join(jobs_text)
+
     base_prompt = f"""
-    You are a professional resume analyzer. Analyze this resume content against the job links provided.
+    You are a professional resume analyzer. Analyze this resume content against the job details provided.
 
     Resume content to analyze:
     {resume_content}
 
-    Job links to analyze against (these are shortened for brevity):
-    {job_links_text}
+    Job details to analyze against:
+    {all_jobs_text}
 
     IMPORTANT INSTRUCTIONS:
-    1. Imagine you can access each job posting and understand its requirements.
-    2. For each job link, analyze what skills and qualifications would be required.
-    3. Compare these requirements against the resume content.
-    4. Provide a match percentage based on how well the resume matches the expected job requirements.
-    5. Identify matching skills present in the resume.
-    6. Identify skills that might be missing or need improvement.
-    7. Provide at least 3 specific, actionable recommendations for each job.
-    8. For matches above 75%, focus on how to excel in the role rather than just qualify.
-    9. Recommendations should be tailored to the specific job and company.
-    10. The job links are shortened - focus on creating realistic analysis without using the full URLs.
+    1. For each job, analyze what skills and qualifications are required based on the job description.
+    2. Compare these requirements against the resume content.
+    3. Provide a match percentage based on how well the resume matches the job requirements.
+    4. Identify matching skills present in the resume that align with the job.
+    5. Identify skills mentioned in the job that might be missing or need improvement in the resume.
+    6. Provide at least 3 specific, actionable recommendations for each job.
+    7. For matches above 75%, focus on how to excel in the role rather than just qualify.
+    8. Recommendations should be tailored to the specific job and company.
 
     Return ONLY a JSON object with this exact structure:
     {{
         "jobs": [
             {{
-                "job_title": "<appropriate job title based on the URL domain>",
-                "company_name": "<appropriate company name based on the URL domain>",
-                "job_link": "<shortened job url>",
+                "job_title": "<job title from input>",
+                "company_name": "<company name from input>",
+                "job_link": "<job link from input if available>",
                 "match_percentage": <number 0-100>,
                 "matching_skills": [<list of matching skills>],
                 "missing_skills": [<list of missing skills>],
+                "job_description": "<job description from input>",
                 "recommendations": [
                     "Specific recommendation 1",
                     "Specific recommendation 2",
@@ -224,7 +195,7 @@ def generate_analysis(resume_content: str, job_links: List[str], custom_instruct
         if not response or not response.text:
             return {"success": False, "error": "No response from AI model"}
 
-        # UPDATED: More robust JSON extraction with improved error handling
+        # Extract and parse JSON with improved error handling
         try:
             # Extract and parse JSON
             json_str = re.search(r"({[\s\S]*})", response.text)
@@ -236,9 +207,9 @@ def generate_analysis(resume_content: str, job_links: List[str], custom_instruct
             # Print the extracted JSON for debugging
             extracted_json = json_str.group(1)
             logger.info(f"Extracted JSON (first 200 chars): {extracted_json[:200]}...")
-            
+
             analysis = json.loads(extracted_json)
-            
+
             # Log successful parsing
             logger.info("Successfully parsed AI response as JSON")
 
@@ -246,63 +217,41 @@ def generate_analysis(resume_content: str, job_links: List[str], custom_instruct
             # Provide detailed error information for debugging
             logger.error(f"JSON parsing error: {str(e)}")
             logger.error(f"Extracted text: {json_str.group(1)[:500] if json_str else 'No JSON found'}")
-            
-            # NEW: Try a more aggressive cleanup of the JSON
-            try:
-                if json_str:
-                    # Try to fix common JSON issues
-                    fixed_json = json_str.group(1)
-                    
-                    # Replace any truncated URLs with placeholder
-                    fixed_json = re.sub(r'"job_link": "[^"]{100,}', '"job_link": "https://job.url/..."', fixed_json)
-                    
-                    # Try parsing again with fixed JSON
-                    analysis = json.loads(fixed_json)
-                    logger.info("Successfully parsed JSON after cleanup")
-                else:
-                    return {"success": False, "error": f"Error parsing AI response: {str(e)}"}
-            except Exception as inner_e:
-                logger.error(f"Failed to fix JSON: {str(inner_e)}")
-                return {"success": False, "error": f"Error parsing AI response: {str(e)}"}
+            return {"success": False, "error": f"Error parsing AI response: {str(e)}"}
 
         # Validate response structure
         if not isinstance(analysis, dict) or "jobs" not in analysis:
             logger.error(f"Invalid response structure: {analysis}")
             return {"success": False, "error": "Invalid response structure: 'jobs' field missing"}
 
-        # UPDATED: Map truncated URLs back to original URLs
-        original_urls_map = {truncated_job_links[i]: job_links[i] for i in range(min(len(truncated_job_links), len(job_links)))}
-        
         # Ensure recommendations and required fields
         for job in analysis["jobs"]:
-            # Replace truncated URL with original if available
-            if job.get("job_link") in original_urls_map:
-                job["job_link"] = original_urls_map[job["job_link"]]
-            elif job.get("job_link") and any(link in job["job_link"] for link in ["indeed", "linkedin", "glassdoor"]):
-                # Try to find closest matching original URL based on domain
-                for truncated, original in original_urls_map.items():
-                    if truncated.split("://")[1].split(".")[0] in job["job_link"]:
-                        job["job_link"] = original
-                        break
-            
+            # Make sure we have recommendations
             if not job.get("recommendations"):
                 job["recommendations"] = [
                     "Highlight relevant project achievements",
                     "Quantify your impact with metrics",
                     "Add specific examples of team leadership",
                 ]
-            # Ensure job title and company name are present
+
+            # Ensure all fields exist
             if not job.get("job_title"):
                 job["job_title"] = "Position"
             if not job.get("company_name"):
                 job["company_name"] = "Company"
+            if not job.get("matching_skills"):
+                job["matching_skills"] = []
+            if not job.get("missing_skills"):
+                job["missing_skills"] = []
+            if not job.get("match_percentage"):
+                job["match_percentage"] = 50
 
         return {"success": True, "jobs": analysis["jobs"]}
 
     except Exception as e:
         logger.error(f"Error in generate_analysis: {str(e)}", exc_info=True)
         return {"success": False, "error": f"Error generating analysis: {str(e)}"}
-    
+
 
 def generate_resume_review(resume_content: str, job_description: str, custom_instructions: str = "") -> dict:
     """

@@ -7,7 +7,6 @@ import {
   List,
   Group,
   Paper,
-  Flex,
   Textarea,
   Menu,
   ActionIcon,
@@ -17,7 +16,7 @@ import {
   Divider,
   RingProgress,
   ThemeIcon,
-  Accordion,
+  Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState, useEffect } from 'react';
@@ -31,8 +30,6 @@ import {
   IconCheck,
   IconX,
   IconBulb,
-  IconSchool,
-  IconAlertTriangle,
   IconFileCheck,
 } from '@tabler/icons-react';
 import ResumeReview from './ResumeReview';
@@ -40,7 +37,7 @@ import LanguageSelector from './LanguageSelector';
 import ATSChecker from './ATSChecker';
 import LearningRecommender from './LearningRecommender';
 
-const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis = null }) => {
+const JobResults = ({ results, resumeFile, ats_analysis = null }) => {
   const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterOpened, { open: openCoverLetter, close: closeCoverLetter }] =
     useDisclosure(false);
@@ -48,7 +45,7 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
     useDisclosure(false);
   const [loadingJobs, setLoadingJobs] = useState({});
   const [customInstruction, setCustomInstruction] = useState('');
-  const [currentJobLink, setCurrentJobLink] = useState('');
+  const [currentJobDetails, setCurrentJobDetails] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [availableLanguages, setAvailableLanguages] = useState([
     { value: 'en', label: 'English' },
@@ -72,22 +69,6 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
     motivationCustomInstructionOpened,
     { open: openMotivationCustomInstruction, close: closeMotivationCustomInstruction },
   ] = useDisclosure(false);
-  const [currentJobForMotivation, setCurrentJobForMotivation] = useState(null);
-
-  useEffect(() => {
-    // Update selected language from localStorage first, then from props if needed
-    const savedLanguage = localStorage.getItem('defaultLanguage');
-    if (savedLanguage) {
-      setSelectedLanguage(savedLanguage);
-    } else if (defaultLanguage) {
-      setSelectedLanguage(defaultLanguage);
-    } else {
-      // Default to English if nothing else is set
-      setSelectedLanguage('en');
-    }
-    
-    // Also update when defaultLanguage changes
-  }, [defaultLanguage]);
 
   // Fetch available languages when component mounts
   useEffect(() => {
@@ -108,6 +89,12 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
     };
 
     fetchLanguages();
+
+    // Load saved language preference if available
+    const savedLanguage = localStorage.getItem('defaultLanguage');
+    if (savedLanguage) {
+      setSelectedLanguage(savedLanguage);
+    }
   }, []);
 
   // Check for ATS results from props
@@ -120,12 +107,16 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
   // Make sure results is treated as an array
   if (!results || !Array.isArray(results) || results.length === 0) return null;
 
-  const handleGenerateCoverLetter = async (jobLink, instruction = '') => {
-    setLoadingJobs((prev) => ({ ...prev, [jobLink]: true }));
+  const handleGenerateCoverLetter = async (job, instruction = '') => {
+    const jobId = job.job_title + job.company_name;
+    setLoadingJobs((prev) => ({ ...prev, [jobId]: true }));
 
     try {
       const response = await axios.post('http://localhost:5050/api/cover-letter', {
-        job_link: jobLink,
+        company_name: job.company_name,
+        job_title: job.job_title,
+        job_description: job.job_description || '',
+        job_link: job.job_link || '',
         custom_instruction: instruction,
         language: selectedLanguage,
       });
@@ -140,16 +131,18 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
       console.error('Error generating cover letter:', error);
       alert(error.response?.data?.error || 'Error generating cover letter. Please try again.');
     } finally {
-      setLoadingJobs((prev) => ({ ...prev, [jobLink]: false }));
+      setLoadingJobs((prev) => ({ ...prev, [jobId]: false }));
     }
   };
 
   const handleGenerateMotivationalLetter = async (job, instruction = '') => {
-    setLoadingMotivation((prev) => ({ ...prev, [job.job_link]: true }));
+    const jobId = job.job_title + job.company_name;
+    setLoadingMotivation((prev) => ({ ...prev, [jobId]: true }));
 
     try {
       const response = await axios.post('http://localhost:5050/api/motivational-letter', {
         job_title: job.job_title,
+        company_name: job.company_name,
         job_description: job.job_description || '',
         custom_instruction: instruction,
       });
@@ -166,35 +159,38 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
         error.response?.data?.error || 'Error generating motivational letter. Please try again.'
       );
     } finally {
-      setLoadingMotivation((prev) => ({ ...prev, [job.job_link]: false }));
+      setLoadingMotivation((prev) => ({ ...prev, [jobId]: false }));
     }
   };
 
-  const handleOpenCustomInstruction = (jobLink) => {
-    setCurrentJobLink(jobLink);
+  const handleOpenCustomInstruction = (job) => {
+    setCurrentJobDetails(job);
     setCustomInstruction('');
     openCustomInstruction();
   };
 
   const handleSubmitCustomInstruction = () => {
     closeCustomInstruction();
-    handleGenerateCoverLetter(currentJobLink, customInstruction);
+    if (currentJobDetails) {
+      handleGenerateCoverLetter(currentJobDetails, customInstruction);
+    }
   };
 
   const handleOpenMotivationCustomInstruction = (job) => {
-    setCurrentJobForMotivation(job);
+    setCurrentJobDetails(job);
     setCustomInstruction('');
     openMotivationCustomInstruction();
   };
 
   const handleSubmitMotivationCustomInstruction = () => {
     closeMotivationCustomInstruction();
-    if (currentJobForMotivation) {
-      handleGenerateMotivationalLetter(currentJobForMotivation, customInstruction);
+    if (currentJobDetails) {
+      handleGenerateMotivationalLetter(currentJobDetails, customInstruction);
     }
   };
 
   const truncateUrl = (url) => {
+    if (!url) return '';
     try {
       const maxLength = 60;
       if (url.length <= maxLength) return url;
@@ -245,155 +241,23 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
     );
   };
 
-  const renderAtsIssuesLists = () => {
-    if (!atsResults) return null;
-
-    return (
-      <Stack spacing="md">
-        <Paper withBorder p="md" radius="md">
-          <Stack spacing="md">
-            <Text weight={500}>Format Issues</Text>
-            <List
-              spacing="xs"
-              size="sm"
-              center
-              icon={
-                <ThemeIcon color="red" size={24} radius="xl">
-                  <IconX size={16} />
-                </ThemeIcon>
-              }
-            >
-              {atsResults.format_issues && atsResults.format_issues.length > 0 ? (
-                atsResults.format_issues.map((issue, index) => (
-                  <List.Item key={index}>{issue}</List.Item>
-                ))
-              ) : (
-                <Text color="dimmed">No format issues detected.</Text>
-              )}
-            </List>
-          </Stack>
-        </Paper>
-
-        <Paper withBorder p="md" radius="md">
-          <Stack spacing="md">
-            <Text weight={500}>Content Issues</Text>
-            <List
-              spacing="xs"
-              size="sm"
-              center
-              icon={
-                <ThemeIcon color="red" size={24} radius="xl">
-                  <IconX size={16} />
-                </ThemeIcon>
-              }
-            >
-              {atsResults.content_issues && atsResults.content_issues.length > 0 ? (
-                atsResults.content_issues.map((issue, index) => (
-                  <List.Item key={index}>{issue}</List.Item>
-                ))
-              ) : (
-                <Text color="dimmed">No content issues detected.</Text>
-              )}
-            </List>
-          </Stack>
-        </Paper>
-
-        <Paper withBorder p="md" radius="md">
-          <Stack spacing="md">
-            <Text weight={500}>Keyword Issues</Text>
-            <List
-              spacing="xs"
-              size="sm"
-              center
-              icon={
-                <ThemeIcon color="red" size={24} radius="xl">
-                  <IconX size={16} />
-                </ThemeIcon>
-              }
-            >
-              {atsResults.keyword_issues && atsResults.keyword_issues.length > 0 ? (
-                atsResults.keyword_issues.map((issue, index) => (
-                  <List.Item key={index}>{issue}</List.Item>
-                ))
-              ) : (
-                <Text color="dimmed">No keyword issues detected.</Text>
-              )}
-            </List>
-          </Stack>
-        </Paper>
-      </Stack>
-    );
-  };
-
-  const renderAtsSuggestions = () => {
-    if (!atsResults) return null;
-
-    return (
-      <Paper withBorder p="md" radius="md">
-        <Stack spacing="md">
-          <Group position="apart">
-            <Text weight={500}>Improvement Suggestions</Text>
-          </Group>
-          <List
-            spacing="xs"
-            size="sm"
-            center
-            icon={
-              <ThemeIcon color="blue" size={24} radius="xl">
-                <IconBulb size={16} />
-              </ThemeIcon>
-            }
-          >
-            {atsResults.improvement_suggestions.map((suggestion, index) => (
-              <List.Item key={index}>{suggestion}</List.Item>
-            ))}
-          </List>
-        </Stack>
-      </Paper>
-    );
-  };
-
-  const renderAtsGoodPractices = () => {
-    if (!atsResults) return null;
-
-    return (
-      <Paper withBorder p="md" radius="md">
-        <Stack spacing="md">
-          <Group position="apart">
-            <Text weight={500}>Good Practices</Text>
-          </Group>
-          <List
-            spacing="xs"
-            size="sm"
-            center
-            icon={
-              <ThemeIcon color="green" size={24} radius="xl">
-                <IconCheck size={16} />
-              </ThemeIcon>
-            }
-          >
-            {atsResults.good_practices && atsResults.good_practices.length > 0 ? (
-              atsResults.good_practices.map((practice, index) => (
-                <List.Item key={index}>{practice}</List.Item>
-              ))
-            ) : (
-              <Text color="dimmed">No good practices detected.</Text>
-            )}
-          </List>
-        </Stack>
-      </Paper>
-    );
-  };
-
   return (
-    <Stack spacing="md">
-      <Text size="xl" weight={700}>
-        Analysis Results
-      </Text>
+    <Stack spacing="xl">
+      <Paper shadow="md" radius="md" p="xl" withBorder>
+        <Stack spacing="md">
+          <Title order={2} align="center" color="blue">
+            Analysis Results
+          </Title>
+          <Text align="center" color="dimmed">
+            We&apos;ve analyzed your resume against the job details you provided
+          </Text>
+          <Divider />
+        </Stack>
+      </Paper>
 
       {/* ATS Results Summary (If Available) */}
       {atsResults && (
-        <Paper shadow="sm" radius="md" p="xl" withBorder>
+        <Paper shadow="md" radius="md" p="xl" withBorder>
           <Stack spacing="md">
             <Group position="apart" align="flex-start">
               <div>
@@ -422,15 +286,16 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
       )}
 
       {results.map((job, index) => (
-        <Paper key={index} shadow="xs" p="md" withBorder>
-          <Stack spacing="sm">
+        <Paper key={index} shadow="md" radius="md" p="xl" withBorder>
+          <Stack spacing="lg">
             {/* Job Header Section */}
             <Stack spacing={4}>
               <Group position="apart" align="center">
-                <Text size="lg" weight={600} color="blue">
+                <Text size="xl" weight={700} color="blue">
                   {job.job_title}
                 </Text>
                 <Badge
+                  size="xl"
                   color={
                     job.match_percentage >= 80
                       ? 'green'
@@ -438,36 +303,36 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
                         ? 'yellow'
                         : 'red'
                   }
-                  size="lg"
                 >
                   {job.match_percentage}% MATCH
                 </Badge>
               </Group>
-              <Flex gap="xs" align="center">
-                <Text size="md" weight={500}>
+              <Group>
+                <Text size="lg" weight={600}>
                   {job.company_name}
                 </Text>
-                <Text size="sm" color="dimmed">
-                  •
-                </Text>
-                <Text size="sm" color="dimmed">
-                  {job.platform || 'Job Board'}
-                </Text>
-              </Flex>
-              <Text size="sm" color="dimmed" style={{ wordBreak: 'break-all' }}>
-                {truncateUrl(job.job_link)}
-              </Text>
+
+                {job.job_link && (
+                  <Tooltip label={job.job_link} position="top">
+                    <Text size="sm" color="dimmed" style={{ cursor: 'pointer' }}>
+                      {truncateUrl(job.job_link)}
+                    </Text>
+                  </Tooltip>
+                )}
+              </Group>
             </Stack>
+
+            <Divider />
 
             {/* Matching Skills */}
             <div>
-              <Text weight={500} size="sm" mb="xs">
+              <Text weight={600} size="md" mb="xs">
                 Matching Skills:
               </Text>
               {job.matching_skills && job.matching_skills.length > 0 ? (
                 <Group spacing="xs">
                   {job.matching_skills.map((skill, i) => (
-                    <Badge key={i} variant="dot" color="green">
+                    <Badge key={i} variant="dot" color="green" size="lg">
                       {skill}
                     </Badge>
                   ))}
@@ -481,13 +346,13 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
 
             {/* Missing Skills */}
             <div>
-              <Text weight={500} size="sm" mb="xs">
+              <Text weight={600} size="md" mb="xs">
                 Skills to Develop:
               </Text>
               {job.missing_skills && job.missing_skills.length > 0 ? (
                 <Group spacing="xs">
                   {job.missing_skills.map((skill, i) => (
-                    <Badge key={i} variant="dot" color="red">
+                    <Badge key={i} variant="dot" color="red" size="lg">
                       {skill}
                     </Badge>
                   ))}
@@ -501,11 +366,11 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
 
             {/* Recommendations */}
             <div>
-              <Text weight={500} size="sm" mb="xs">
+              <Text weight={600} size="md" mb="xs">
                 Recommendations:
               </Text>
               {job.recommendations && job.recommendations.length > 0 ? (
-                <List size="sm">
+                <List size="sm" spacing="xs">
                   {job.recommendations.map((rec, i) => (
                     <List.Item key={i}>{rec}</List.Item>
                   ))}
@@ -519,7 +384,7 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
 
             <Divider />
 
-            {/* Action Buttons - First Row */}
+            {/* Action Buttons - Grid Layout */}
             <Grid>
               <Grid.Col span={6}>
                 {/* Cover Letter Button Group */}
@@ -527,24 +392,24 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
                   <Menu.Target>
                     <Button.Group style={{ width: '100%' }}>
                       <Button
-                        variant="light"
-                        color="blue"
-                        onClick={() => handleGenerateCoverLetter(job.job_link)}
-                        loading={loadingJobs[job.job_link]}
+                        variant="gradient"
+                        gradient={{ from: 'blue', to: 'indigo' }}
+                        onClick={() => handleGenerateCoverLetter(job)}
+                        loading={loadingJobs[job.job_title + job.company_name]}
                         style={{ flexGrow: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                       >
                         Generate Cover Letter
                       </Button>
                       <Button
-                        variant="light"
-                        color="blue"
+                        variant="gradient"
+                        gradient={{ from: 'blue', to: 'indigo' }}
                         style={{
                           flexGrow: 0,
                           paddingLeft: '8px',
                           paddingRight: '8px',
                           borderTopLeftRadius: 0,
                           borderBottomLeftRadius: 0,
-                          borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                          borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
                         }}
                       >
                         <Group spacing={2}>
@@ -568,7 +433,7 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
                     <Menu.Divider />
                     <Menu.Item
                       icon={<IconPlus size={14} />}
-                      onClick={() => handleOpenCustomInstruction(job.job_link)}
+                      onClick={() => handleOpenCustomInstruction(job)}
                     >
                       Custom Instructions
                     </Menu.Item>
@@ -580,23 +445,23 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
                 {/* Motivational Letter Button */}
                 <Button.Group style={{ width: '100%' }}>
                   <Button
-                    variant="light"
-                    color="yellow"
+                    variant="gradient"
+                    gradient={{ from: 'orange', to: 'yellow' }}
                     onClick={() => handleGenerateMotivationalLetter(job)}
-                    loading={loadingMotivation[job.job_link]}
+                    loading={loadingMotivation[job.job_title + job.company_name]}
                     style={{ flexGrow: 1 }}
                     leftIcon={<IconFileDescription size={16} />}
                   >
                     Motivational Letter
                   </Button>
                   <Button
-                    variant="light"
-                    color="yellow"
+                    variant="gradient"
+                    gradient={{ from: 'orange', to: 'yellow' }}
                     style={{
                       flexGrow: 0,
                       paddingLeft: '8px',
                       paddingRight: '8px',
-                      borderLeft: '1px solid rgba(0, 0, 0, 0.1)',
+                      borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
                     }}
                     onClick={() => handleOpenMotivationCustomInstruction(job)}
                   >
@@ -606,23 +471,29 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
               </Grid.Col>
             </Grid>
 
-            {/* Action Buttons - Second Row */}
+            {/* Second Row of Action Buttons */}
             <Grid>
               <Grid.Col span={6}>
-                <ResumeReview jobLink={job.job_link} resumeFile={resumeFile} />
+                <ResumeReview
+                  jobLink={job.job_link || ''}
+                  jobTitle={job.job_title}
+                  jobDescription={job.job_description || ''}
+                  companyName={job.company_name}
+                  resumeFile={resumeFile}
+                />
               </Grid.Col>
               <Grid.Col span={6}>
-                <ATSChecker resumeFile={resumeFile} jobDescription={job.job_description} />
+                <ATSChecker resumeFile={resumeFile} jobDescription={job.job_description || ''} />
               </Grid.Col>
             </Grid>
 
-            {/* Learning Resources */}
-            {job.missing_skills && job.missing_skills.length > 0 && (
-              <LearningRecommender
-                skills={job.missing_skills}
-                title={`Learning Resources for ${job.job_title}`}
-              />
-            )}
+            {/* Learning Resources Button - Always visible but conditionally disabled */}
+            <LearningRecommender
+              skills={job.missing_skills && job.missing_skills.length > 0 ? job.missing_skills : []}
+              title={`Learning Resources for ${job.job_title}`}
+              disabled={!job.missing_skills || job.missing_skills.length === 0}
+              disabledTooltip="No new skills to learn for this job"
+            />
           </Stack>
         </Paper>
       ))}
@@ -783,10 +654,123 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
 
             <Divider />
 
-            {/* ATS Issue Reports */}
-            {renderAtsIssuesLists()}
-            {renderAtsSuggestions()}
-            {renderAtsGoodPractices()}
+            {/* Simplified ATS Issue Display */}
+            <Paper withBorder p="md" radius="md">
+              <Text weight={600} mb="md">
+                Issues Found
+              </Text>
+
+              <Stack spacing="sm">
+                {atsResults.format_issues && atsResults.format_issues.length > 0 && (
+                  <div>
+                    <Badge color="red" mb="xs">
+                      Format Issues
+                    </Badge>
+                    <List
+                      spacing="xs"
+                      size="sm"
+                      icon={
+                        <ThemeIcon color="red" size={24} radius="xl">
+                          <IconX size={16} />
+                        </ThemeIcon>
+                      }
+                    >
+                      {atsResults.format_issues.map((issue, index) => (
+                        <List.Item key={index}>{issue}</List.Item>
+                      ))}
+                    </List>
+                  </div>
+                )}
+
+                {atsResults.content_issues && atsResults.content_issues.length > 0 && (
+                  <div>
+                    <Badge color="red" mb="xs">
+                      Content Issues
+                    </Badge>
+                    <List
+                      spacing="xs"
+                      size="sm"
+                      icon={
+                        <ThemeIcon color="red" size={24} radius="xl">
+                          <IconX size={16} />
+                        </ThemeIcon>
+                      }
+                    >
+                      {atsResults.content_issues.map((issue, index) => (
+                        <List.Item key={index}>{issue}</List.Item>
+                      ))}
+                    </List>
+                  </div>
+                )}
+
+                {atsResults.keyword_issues && atsResults.keyword_issues.length > 0 && (
+                  <div>
+                    <Badge color="red" mb="xs">
+                      Keyword Issues
+                    </Badge>
+                    <List
+                      spacing="xs"
+                      size="sm"
+                      icon={
+                        <ThemeIcon color="red" size={24} radius="xl">
+                          <IconX size={16} />
+                        </ThemeIcon>
+                      }
+                    >
+                      {atsResults.keyword_issues.map((issue, index) => (
+                        <List.Item key={index}>{issue}</List.Item>
+                      ))}
+                    </List>
+                  </div>
+                )}
+
+                {(!atsResults.format_issues || atsResults.format_issues.length === 0) &&
+                  (!atsResults.content_issues || atsResults.content_issues.length === 0) &&
+                  (!atsResults.keyword_issues || atsResults.keyword_issues.length === 0) && (
+                    <Text color="dimmed">No significant issues detected.</Text>
+                  )}
+              </Stack>
+            </Paper>
+
+            <Paper withBorder p="md" radius="md">
+              <Stack spacing="md">
+                <Text weight={600}>Improvement Suggestions</Text>
+                <List
+                  spacing="xs"
+                  size="sm"
+                  icon={
+                    <ThemeIcon color="blue" size={24} radius="xl">
+                      <IconBulb size={16} />
+                    </ThemeIcon>
+                  }
+                >
+                  {atsResults.improvement_suggestions.map((suggestion, index) => (
+                    <List.Item key={index}>{suggestion}</List.Item>
+                  ))}
+                </List>
+              </Stack>
+            </Paper>
+
+            {atsResults.good_practices && atsResults.good_practices.length > 0 && (
+              <Paper withBorder p="md" radius="md">
+                <Stack spacing="md">
+                  <Text weight={600}>Good Practices</Text>
+                  <List
+                    spacing="xs"
+                    size="sm"
+                    icon={
+                      <ThemeIcon color="green" size={24} radius="xl">
+                        <IconCheck size={16} />
+                      </ThemeIcon>
+                    }
+                  >
+                    {atsResults.good_practices.map((practice, index) => (
+                      <List.Item key={index}>{practice}</List.Item>
+                    ))}
+                  </List>
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         )}
       </Modal>

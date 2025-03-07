@@ -4,27 +4,35 @@ This module generates motivational letters for job applications explaining why t
 is applying for the position and why they should be hired.
 """
 
-from typing import Dict
+from typing import Any, Dict
 
 import google.generativeai as genai
 
 
-def generate_motivational_letter(job_title: str, job_description: str = "") -> Dict[str, any]:
+def generate_motivational_letter(job_details: Dict[str, str]) -> Dict[str, Any]:
     """
-    Generate a motivational letter for a job application in the specified language.
+    Generate a motivational letter for a job application.
 
     Args:
-        job_title: The title of the job the user is applying for
-        job_description: Optional job description to make the letter more specific
+        job_details: Dictionary containing job title, company name, and job description
 
     Returns:
         dict: Contains success status and either the motivational letter or error message
     """
     try:
+        # Extract job details
+        job_title = job_details.get("job_title", "")
+        company_name = job_details.get("company_name", "")
+        job_description = job_details.get("job_description", "")
+
+        # Create job context
+        job_context = f"Job Title: {job_title}\n"
+        if company_name:
+            job_context += f"Company Name: {company_name}\n"
+
         # Add job description if provided
-        job_context = ""
         if job_description and job_description.strip():
-            job_context = f"""
+            job_context += f"""
             The job description is as follows:
             {job_description}
             
@@ -34,7 +42,7 @@ def generate_motivational_letter(job_title: str, job_description: str = "") -> D
         # Create prompt for motivational letter generation
         prompt = f"""
         You are a professional career advisor helping a job applicant write a brief motivational letter.
-        Create a compelling motivational letter for a {job_title} position.
+        Create a compelling motivational letter for the following position:
         
         {job_context}
 

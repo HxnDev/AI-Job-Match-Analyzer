@@ -100,8 +100,6 @@ const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
       fr: 'French (Français)',
       de: 'German (Deutsch)',
       zh: 'Chinese (中文)',
-      ja: 'Japanese (日本語)',
-      pt: 'Portuguese (Português)',
       ru: 'Russian (Русский)',
       ar: 'Arabic (العربية)',
     };

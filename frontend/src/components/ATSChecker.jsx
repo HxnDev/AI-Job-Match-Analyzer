@@ -16,7 +16,6 @@ import {
   Tooltip,
   Divider,
   CopyButton,
-  Textarea,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -25,7 +24,6 @@ import {
   IconBulb,
   IconAlertTriangle,
   IconFileCheck,
-  IconDownload,
   IconCopy,
 } from '@tabler/icons-react';
 import axios from 'axios';
