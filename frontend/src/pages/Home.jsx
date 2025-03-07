@@ -35,7 +35,6 @@ const Home = () => {
   const [jobDetails, setJobDetails] = useState([]);
   const [jobResults, setJobResults] = useState([]);
   const [customInstructions, setCustomInstructions] = useState('');
-  const [atsAnalysis, setAtsAnalysis] = useState(null);
 
   // UI state
   const [loading, handlers] = useDisclosure(false);
@@ -115,11 +114,6 @@ const Home = () => {
         // Extract job analysis results
         const results = response.data.results || [];
         setJobResults(results);
-
-        // Extract ATS analysis if available
-        if (response.data.ats_analysis) {
-          setAtsAnalysis(response.data.ats_analysis);
-        }
 
         // Show success notification
         notifications.show({
@@ -275,11 +269,7 @@ const Home = () => {
         >
           {(styles) => (
             <div style={styles}>
-              <JobResults
-                results={jobResults}
-                resumeFile={getResumeBlob()}
-                ats_analysis={atsAnalysis}
-              />
+              <JobResults results={jobResults} resumeFile={getResumeBlob()} />
             </div>
           )}
         </Transition>
