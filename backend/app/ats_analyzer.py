@@ -141,24 +141,20 @@ def generate_optimized_resume_sections(resume_content: str, job_description: str
             "professional_summary": "<optimized professional summary>",
             "skills_section": [
                 "<skill 1>",
-                "<skill 2>",
-                "..."
+                "<skill 2>"
             ],
             "experience_bullets": [
                 "<bullet 1>",
-                "<bullet 2>",
-                "..."
+                "<bullet 2>"
             ],
             "keyword_analysis": {
                 "job_keywords": [
                     "<keyword 1>", 
-                    "<keyword 2>",
-                    "..."
+                    "<keyword 2>"
                 ],
                 "missing_keywords": [
                     "<keyword 1>", 
-                    "<keyword 2>",
-                    "..."
+                    "<keyword 2>"
                 ]
             }
         }}

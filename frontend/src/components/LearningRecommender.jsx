@@ -19,6 +19,7 @@ import {
   Anchor,
   Loader,
   Box,
+  Alert,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -33,6 +34,7 @@ import {
   IconRocket,
   IconBulb,
   IconBriefcase,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import axios from 'axios';
 
@@ -44,6 +46,8 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
   const [detailedPlanLoading, setDetailedPlanLoading] = useState(false);
   const [detailedSkill, setDetailedSkill] = useState('');
   const [expandedSkill, setExpandedSkill] = useState(null);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('recommendations');
 
   const handleGetRecommendations = async () => {
     if (!skills || skills.length === 0) {
@@ -52,12 +56,16 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
     }
 
     setLoading(true);
+    setError(null);
     try {
+      console.log('Requesting learning recommendations for skills:', skills);
       const response = await axios.post('http://localhost:5050/api/learning-recommendations', {
         skills,
       });
 
-      if (response.data.success) {
+      console.log('Received response:', response.data);
+      
+      if (response.data.success && response.data.recommendations) {
         setRecommendations(response.data.recommendations);
         open();
       } else {
@@ -65,9 +73,7 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
       }
     } catch (error) {
       console.error('Error getting learning recommendations:', error);
-      alert(
-        error.response?.data?.error || 'Error getting learning recommendations. Please try again.'
-      );
+      setError(error.response?.data?.error || 'Error getting learning recommendations. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,22 +82,25 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
   const handleGetDetailedPlan = async (skill) => {
     setDetailedPlanLoading(true);
     setDetailedSkill(skill);
+    setError(null);
+    setActiveTab('detailed');
 
     try {
+      console.log('Requesting detailed learning plan for skill:', skill);
       const response = await axios.post('http://localhost:5050/api/learning-plan', {
         skill,
       });
 
-      if (response.data.success) {
+      console.log('Received detailed plan response:', response.data);
+      
+      if (response.data.success && response.data.learning_plan) {
         setDetailedPlan(response.data.learning_plan);
       } else {
         throw new Error(response.data.error || 'Failed to get detailed learning plan');
       }
     } catch (error) {
       console.error('Error getting detailed learning plan:', error);
-      alert(
-        error.response?.data?.error || 'Error getting detailed learning plan. Please try again.'
-      );
+      setError(error.response?.data?.error || 'Error getting detailed learning plan. Please try again.');
     } finally {
       setDetailedPlanLoading(false);
     }
@@ -280,14 +289,14 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
         </Group>
 
         <Accordion>
-          {detailedPlan.levels.map((level, index) => (
-            <Accordion.Item key={index} value={level.level}>
+          {detailedPlan.levels && detailedPlan.levels.map((level, index) => (
+            <Accordion.Item key={index} value={level.level || `level-${index}`}>
               <Accordion.Control>
                 <Group>
                   <Badge color={index === 0 ? 'green' : index === 1 ? 'blue' : 'violet'}>
-                    {level.level}
+                    {level.level || `Level ${index + 1}`}
                   </Badge>
-                  <Text>{level.description?.substring(0, 50)}...</Text>
+                  <Text>{level.description ? (level.description.length > 50 ? level.description.substring(0, 50) + '...' : level.description) : 'Description unavailable'}</Text>
                 </Group>
               </Accordion.Control>
               <Accordion.Panel>
@@ -297,11 +306,15 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
                       Key Concepts
                     </Text>
                     <Group spacing="xs" mt="xs">
-                      {level.key_concepts.map((concept, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {concept}
-                        </Badge>
-                      ))}
+                      {level.key_concepts && level.key_concepts.length > 0 ? (
+                        level.key_concepts.map((concept, idx) => (
+                          <Badge key={idx} variant="outline">
+                            {concept}
+                          </Badge>
+                        ))
+                      ) : (
+                        <Text color="dimmed">No key concepts specified</Text>
+                      )}
                     </Group>
                   </div>
 
@@ -310,17 +323,21 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
                       Recommended Resources
                     </Text>
                     <List mt="xs">
-                      {level.resources.map((resource, idx) => (
-                        <List.Item key={idx}>
-                          <Text weight={500} size="sm">
-                            {resource.title}
-                          </Text>
-                          <Text size="xs" color="dimmed">
-                            {resource.type} • {resource.source}
-                          </Text>
-                          <Text size="xs">{resource.description}</Text>
-                        </List.Item>
-                      ))}
+                      {level.resources && level.resources.length > 0 ? (
+                        level.resources.map((resource, idx) => (
+                          <List.Item key={idx}>
+                            <Text weight={500} size="sm">
+                              {resource.title}
+                            </Text>
+                            <Text size="xs" color="dimmed">
+                              {resource.type} • {resource.source}
+                            </Text>
+                            <Text size="xs">{resource.description}</Text>
+                          </List.Item>
+                        ))
+                      ) : (
+                        <Text color="dimmed">No resources specified</Text>
+                      )}
                     </List>
                   </div>
 
@@ -336,15 +353,21 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
                         </ThemeIcon>
                       }
                     >
-                      {level.projects.map((project, idx) => (
-                        <List.Item key={idx}>{project}</List.Item>
-                      ))}
+                      {level.projects && level.projects.length > 0 ? (
+                        level.projects.map((project, idx) => (
+                          <List.Item key={idx}>{project}</List.Item>
+                        ))
+                      ) : (
+                        <Text color="dimmed">No projects specified</Text>
+                      )}
                     </List>
                   </div>
 
                   <Group>
                     <IconDeviceDesktop size={16} />
-                    <Text size="sm">Estimated Time Investment: {level.estimated_time}</Text>
+                    <Text size="sm">
+                      Estimated Time Investment: {level.estimated_time || 'Not specified'}
+                    </Text>
                   </Group>
                 </Stack>
               </Accordion.Panel>
@@ -352,6 +375,16 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
           ))}
         </Accordion>
       </Stack>
+    );
+  };
+
+  const renderErrorAlert = () => {
+    if (!error) return null;
+    
+    return (
+      <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red" mb="md">
+        {error}
+      </Alert>
     );
   };
 
@@ -382,7 +415,7 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
             <Text>Loading recommendations...</Text>
           </Stack>
         ) : (
-          <Tabs defaultValue="recommendations">
+          <Tabs value={activeTab} onTabChange={setActiveTab}>
             <Tabs.List>
               <Tabs.Tab value="recommendations">Recommendations</Tabs.Tab>
               <Tabs.Tab value="detailed" disabled={!detailedPlan}>
@@ -392,7 +425,9 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
 
             <Tabs.Panel value="recommendations" pt="md">
               <Box mt="md">
-                {recommendations ? (
+                {renderErrorAlert()}
+                
+                {recommendations && recommendations.length > 0 ? (
                   <>
                     <Text size="sm" color="dimmed" mb="md">
                       Click on a skill to view learning resources and recommendations.
@@ -401,9 +436,9 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
                       renderSkillRecommendations(skillData)
                     )}
                   </>
-                ) : (
+                ) : !error ? (
                   <Text color="dimmed">No recommendations available</Text>
-                )}
+                ) : null}
               </Box>
             </Tabs.Panel>
 
@@ -414,7 +449,10 @@ const LearningRecommender = ({ skills = [], title = 'Learning Recommendations' }
                   <Text>Creating detailed learning plan for {detailedSkill}...</Text>
                 </Stack>
               ) : (
-                renderDetailedPlan()
+                <>
+                  {renderErrorAlert()}
+                  {!error && renderDetailedPlan()}
+                </>
               )}
             </Tabs.Panel>
           </Tabs>

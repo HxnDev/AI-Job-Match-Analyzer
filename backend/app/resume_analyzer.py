@@ -7,6 +7,7 @@ import io
 import json
 import re
 from typing import BinaryIO, Dict, Union
+from urllib.parse import urlparse  # Add this import
 
 import google.generativeai as genai
 from PyPDF2 import PdfReader
@@ -108,28 +109,35 @@ def generate_analysis(resume_content: str, job_links: list, custom_instructions:
     Returns:
         dict: Analysis results from the AI model
     """
+    # Format job links for better AI understanding
+    job_links_text = "\n".join(job_links)
+    
     base_prompt = f"""
-    You are a professional resume analyzer. Analyze this resume content and provide detailed results.
+    You are a professional resume analyzer. Analyze this resume content against the job links provided.
 
     Resume content to analyze:
     {resume_content}
 
     Job links to analyze against:
-    {job_links}
+    {job_links_text}
 
     IMPORTANT INSTRUCTIONS:
-    1. Always provide at least 3 recommendations, even for high matches
-    2. For matches above 75%, provide recommendations to excel in the role
-    3. Recommendations should be specific and actionable
-    4. Match percentage should be based on both technical skills and overall fit
-    5. For each job, provide a clear job title and company name
+    1. Imagine you can access each job posting and understand its requirements.
+    2. For each job link, analyze what skills and qualifications would be required.
+    3. Compare these requirements against the resume content.
+    4. Provide a match percentage based on how well the resume matches the expected job requirements.
+    5. Identify matching skills present in the resume.
+    6. Identify skills that might be missing or need improvement.
+    7. Provide at least 3 specific, actionable recommendations for each job.
+    8. For matches above 75%, focus on how to excel in the role rather than just qualify.
+    9. Recommendations should be tailored to the specific job and company.
 
     Return ONLY a JSON object with this exact structure:
     {{
         "jobs": [
             {{
-                "job_title": "<job title>",
-                "company_name": "<company name>",
+                "job_title": "<appropriate job title based on the URL>",
+                "company_name": "<appropriate company name based on the URL>",
                 "job_link": "<job url>",
                 "match_percentage": <number 0-100>,
                 "matching_skills": [<list of matching skills>],
@@ -281,15 +289,11 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
                 cleaned_text = response.text.strip()
 
                 # Find JSON content using regex if needed
-                import re
-
                 json_match = re.search(r"({[\s\S]*})", cleaned_text)
                 if json_match:
                     cleaned_text = json_match.group(1)
 
                 # Parse the JSON
-                import json
-
                 review_data = json.loads(cleaned_text)
 
                 # Validate the structure

@@ -51,7 +51,7 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
                             "title": "<course title>",
                             "platform": "<platform name>",
                             "url": "<generic url to platform>",
-                            "is_free": true/false,
+                            "is_free": true,
                             "difficulty": "Beginner/Intermediate/Advanced"
                         }}
                     ],
@@ -79,6 +79,8 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
         - For URLs, only use generic domain URLs (like "coursera.org", "youtube.com", "medium.com")
         - Do not create specific deep URLs that might not exist
         - Do not include specific course IDs or video IDs in URLs
+        - Use double quotes for all JSON properties and string values
+        - Use true/false without quotes for boolean values
         """
 
         model = genai.GenerativeModel("gemini-2.0-flash")
@@ -98,11 +100,114 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
         if not json_str:
             return {"success": False, "error": "Invalid response format"}
 
-        recommendations = json.loads(json_str.group(1))
+        try:
+            # Try to parse the JSON directly
+            recommendations = json.loads(json_str.group(1))
+        except json.JSONDecodeError as e:
+            # If there's an error, try to clean up the JSON
+            cleaned_json = json_str.group(1)
+            
+            # Replace single quotes with double quotes (common issue)
+            cleaned_json = re.sub(r"'([^']+)':", r'"\1":', cleaned_json)
+            cleaned_json = re.sub(r": '([^']+)'", r': "\1"', cleaned_json)
+            
+            # Fix boolean values (another common issue)
+            cleaned_json = cleaned_json.replace("'true'", "true").replace("'false'", "false")
+            
+            try:
+                # Try to parse again after cleanup
+                recommendations = json.loads(cleaned_json)
+            except json.JSONDecodeError:
+                # If still failing, return a fallback response with error info
+                return {
+                    "success": False, 
+                    "error": f"Could not parse AI response as JSON: {str(e)}",
+                    "raw_response": response.text[:500]  # Include part of the response for debugging
+                }
         
         # Validate and ensure all required fields
         if "recommendations" not in recommendations or not isinstance(recommendations["recommendations"], list):
             return {"success": False, "error": "Invalid response structure"}
+        
+        # Ensure each recommendation has the expected structure with defaults if missing
+        for i, rec in enumerate(recommendations["recommendations"]):
+            # Ensure skill property exists
+            if "skill" not in rec:
+                rec["skill"] = skills[i] if i < len(skills) else "Unknown skill"
+            
+            # Ensure required arrays exist
+            if "courses" not in rec or not isinstance(rec["courses"], list):
+                rec["courses"] = []
+            
+            if "articles" not in rec or not isinstance(rec["articles"], list):
+                rec["articles"] = []
+                
+            if "videos" not in rec or not isinstance(rec["videos"], list):
+                rec["videos"] = []
+            
+            # Ensure learning_path exists
+            if "learning_path" not in rec or not isinstance(rec["learning_path"], str):
+                rec["learning_path"] = "Start with fundamentals, practice with projects, advance to complex applications."
+                
+            # Validate course objects
+            for j, course in enumerate(rec["courses"]):
+                if not isinstance(course, dict):
+                    rec["courses"][j] = {
+                        "title": "Recommended Course",
+                        "platform": "Online Learning Platform",
+                        "url": "coursera.org",
+                        "is_free": False,
+                        "difficulty": "Intermediate"
+                    }
+                else:
+                    # Ensure all course properties exist
+                    if "title" not in course:
+                        course["title"] = "Recommended Course"
+                    if "platform" not in course:
+                        course["platform"] = "Online Learning Platform"
+                    if "url" not in course:
+                        course["url"] = "coursera.org"
+                    if "is_free" not in course:
+                        course["is_free"] = False
+                    if "difficulty" not in course:
+                        course["difficulty"] = "Intermediate"
+            
+            # Validate article objects
+            for j, article in enumerate(rec["articles"]):
+                if not isinstance(article, dict):
+                    rec["articles"][j] = {
+                        "title": "Recommended Article",
+                        "source": "Technical Blog",
+                        "url": "medium.com"
+                    }
+                else:
+                    # Ensure all article properties exist
+                    if "title" not in article:
+                        article["title"] = "Recommended Article"
+                    if "source" not in article:
+                        article["source"] = "Technical Blog"
+                    if "url" not in article:
+                        article["url"] = "medium.com"
+            
+            # Validate video objects
+            for j, video in enumerate(rec["videos"]):
+                if not isinstance(video, dict):
+                    rec["videos"][j] = {
+                        "title": "Recommended Video",
+                        "creator": "Educational Channel",
+                        "platform": "YouTube",
+                        "url": "youtube.com"
+                    }
+                else:
+                    # Ensure all video properties exist
+                    if "title" not in video:
+                        video["title"] = "Recommended Video"
+                    if "creator" not in video:
+                        video["creator"] = "Educational Channel"
+                    if "platform" not in video:
+                        video["platform"] = "YouTube"
+                    if "url" not in video:
+                        video["url"] = "youtube.com"
         
         return {"success": True, "recommendations": recommendations["recommendations"]}
 
@@ -185,6 +290,10 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
                 }}
             ]
         }}
+        
+        IMPORTANT:
+        - Use double quotes for all property names and string values in the JSON
+        - Ensure all arrays and objects are properly formatted
         """
 
         model = genai.GenerativeModel("gemini-2.0-flash")
@@ -204,7 +313,110 @@ def generate_detailed_learning_plan(skill: str) -> Dict[str, Any]:
         if not json_str:
             return {"success": False, "error": "Invalid response format"}
 
-        learning_plan = json.loads(json_str.group(1))
+        try:
+            # Try to parse the JSON directly
+            learning_plan = json.loads(json_str.group(1))
+        except json.JSONDecodeError as e:
+            # If there's an error, try to clean up the JSON
+            cleaned_json = json_str.group(1)
+            
+            # Replace single quotes with double quotes (common issue)
+            cleaned_json = re.sub(r"'([^']+)':", r'"\1":', cleaned_json)
+            cleaned_json = re.sub(r": '([^']+)'", r': "\1"', cleaned_json)
+            
+            try:
+                # Try to parse again after cleanup
+                learning_plan = json.loads(cleaned_json)
+            except json.JSONDecodeError:
+                # If still failing, return a fallback response with error info
+                return {
+                    "success": False, 
+                    "error": f"Could not parse AI response as JSON: {str(e)}",
+                    "raw_response": response.text[:500]  # Include part of the response for debugging
+                }
+        
+        # Validate and ensure all required fields with defaults if missing
+        if not isinstance(learning_plan, dict):
+            return {"success": False, "error": "Invalid learning plan structure"}
+        
+        # Ensure basic properties
+        if "skill" not in learning_plan:
+            learning_plan["skill"] = skill
+            
+        if "overview" not in learning_plan:
+            learning_plan["overview"] = f"A comprehensive learning path for mastering {skill}"
+        
+        # Ensure levels array exists and has proper structure
+        if "levels" not in learning_plan or not isinstance(learning_plan["levels"], list):
+            learning_plan["levels"] = [
+                {
+                    "level": "Beginner",
+                    "description": f"Introduction to {skill}",
+                    "key_concepts": ["Basic concepts"],
+                    "resources": [{"type": "Tutorial", "title": "Getting Started", "source": "Official Documentation", "description": "Introduction to the fundamentals"}],
+                    "projects": ["Simple practice project"],
+                    "estimated_time": "2-4 weeks"
+                },
+                {
+                    "level": "Intermediate",
+                    "description": f"Building on {skill} fundamentals",
+                    "key_concepts": ["Intermediate concepts"],
+                    "resources": [{"type": "Course", "title": "Intermediate Skills", "source": "Online Platform", "description": "Developing more advanced knowledge"}],
+                    "projects": ["More complex project"],
+                    "estimated_time": "1-3 months"
+                },
+                {
+                    "level": "Advanced",
+                    "description": f"Mastering {skill}",
+                    "key_concepts": ["Advanced concepts"],
+                    "resources": [{"type": "Book", "title": "Advanced Techniques", "source": "Expert Author", "description": "In-depth coverage of advanced topics"}],
+                    "projects": ["Comprehensive real-world project"],
+                    "estimated_time": "3-6 months"
+                }
+            ]
+        else:
+            # Validate and fix each level
+            for level in learning_plan["levels"]:
+                # Check required string fields
+                for field in ["level", "description", "estimated_time"]:
+                    if field not in level or not isinstance(level[field], str):
+                        if field == "level":
+                            level[field] = "Skill Level"
+                        elif field == "description":
+                            level[field] = "Level description"
+                        else:  # estimated_time
+                            level[field] = "1-3 months"
+                
+                # Check required array fields
+                for field in ["key_concepts", "projects"]:
+                    if field not in level or not isinstance(level[field], list):
+                        level[field] = []
+                
+                # Check resources array
+                if "resources" not in level or not isinstance(level["resources"], list):
+                    level["resources"] = []
+                
+                # Check each resource
+                for i, resource in enumerate(level["resources"]):
+                    if not isinstance(resource, dict):
+                        level["resources"][i] = {
+                            "type": "Resource",
+                            "title": "Learning Resource",
+                            "source": "Provider",
+                            "description": "Resource description"
+                        }
+                    else:
+                        # Ensure all resource properties exist
+                        for field in ["type", "title", "source", "description"]:
+                            if field not in resource or not isinstance(resource[field], str):
+                                if field == "type":
+                                    resource[field] = "Resource"
+                                elif field == "title":
+                                    resource[field] = "Learning Resource"
+                                elif field == "source":
+                                    resource[field] = "Provider"
+                                else:  # description
+                                    resource[field] = "Resource description"
         
         return {"success": True, "learning_plan": learning_plan}
 

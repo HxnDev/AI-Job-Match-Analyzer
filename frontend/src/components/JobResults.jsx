@@ -75,10 +75,18 @@ const JobResults = ({ results, resumeFile, defaultLanguage = 'en', ats_analysis 
   const [currentJobForMotivation, setCurrentJobForMotivation] = useState(null);
 
   useEffect(() => {
-    // Update selected language when defaultLanguage prop changes
-    if (defaultLanguage) {
+    // Update selected language from localStorage first, then from props if needed
+    const savedLanguage = localStorage.getItem('defaultLanguage');
+    if (savedLanguage) {
+      setSelectedLanguage(savedLanguage);
+    } else if (defaultLanguage) {
       setSelectedLanguage(defaultLanguage);
+    } else {
+      // Default to English if nothing else is set
+      setSelectedLanguage('en');
     }
+    
+    // Also update when defaultLanguage changes
   }, [defaultLanguage]);
 
   // Fetch available languages when component mounts
