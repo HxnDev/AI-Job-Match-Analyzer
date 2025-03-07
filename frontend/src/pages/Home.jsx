@@ -82,7 +82,7 @@ const Home = () => {
     }
 
     // Convert job details to a JSON string (Even if empty)
-    formData.append("job_links", JSON.stringify(jobDetails || []));
+    formData.append('job_links', JSON.stringify(jobDetails || []));
 
     try {
       // Convert job details to a JSON string
