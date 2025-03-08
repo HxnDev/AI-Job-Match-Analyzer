@@ -87,6 +87,25 @@ const getBetterUrl = (url, title, platform) => {
   return url;
 };
 
+// Helper to sanitize skill names (simplify long skills or skills with special characters)
+const sanitizeSkill = (skill) => {
+  if (!skill) return 'Unknown Skill';
+
+  // If skill contains parentheses with examples, simplify it
+  if (skill.includes('(') && skill.includes(')')) {
+    // Extract the main skill name before the parenthesis
+    const mainSkill = skill.split('(')[0].trim();
+    return mainSkill;
+  }
+
+  // If skill is too long (over 30 chars), truncate it
+  if (skill.length > 30) {
+    return skill.substring(0, 30).trim();
+  }
+
+  return skill;
+};
+
 const LearningRecommender = ({
   skills = [],
   title = 'Learning Recommendations',
@@ -102,14 +121,48 @@ const LearningRecommender = ({
   const [expandedSkill, setExpandedSkill] = useState(null);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('recommendations');
+  const [truncationNotice, setTruncationNotice] = useState(null);
 
   const handleGetRecommendations = async () => {
-    // Add fallback skills if none provided or empty array
-    const skillsToUse =
+    // Prepare a list of sanitized skills
+    const originalSkills =
       skills && skills.length > 0 ? skills : ['Programming', 'Project Management', 'Communication'];
+
+    // Create a mapping between original and sanitized skills for display
+    const skillMap = {};
+    const sanitizedSkills = originalSkills.map((skill) => {
+      const sanitized = sanitizeSkill(skill);
+      skillMap[sanitized] = skill; // Store original skill for reference
+      return sanitized;
+    });
+
+    const originalSkillCount = sanitizedSkills.length;
+
+    // Limit to maximum 3 skills to be extra safe
+    const hasExcessSkills = sanitizedSkills.length > 3;
+    let skillsToUse = sanitizedSkills;
+
+    if (hasExcessSkills) {
+      const truncatedSkills = sanitizedSkills.slice(0, 3);
+      const excessSkills = originalSkills.slice(3).map((s) => skillMap[s] || s);
+
+      // Update truncation notice with original skill names
+      setTruncationNotice({
+        original: originalSkillCount,
+        displayed: 3,
+        skills: truncatedSkills.map((s) => skillMap[s] || s),
+        excess: excessSkills,
+        message: `Showing recommendations for the first 3 skills out of ${originalSkillCount} due to system limitations.`,
+      });
+
+      skillsToUse = truncatedSkills;
+    } else {
+      setTruncationNotice(null);
+    }
 
     setLoading(true);
     setError(null);
+
     try {
       console.log('Requesting learning recommendations for skills:', skillsToUse);
       const response = await axios.post('http://localhost:5050/api/learning-recommendations', {
@@ -119,7 +172,20 @@ const LearningRecommender = ({
       console.log('Received response:', response.data);
 
       if (response.data.success && response.data.recommendations) {
-        setRecommendations(response.data.recommendations);
+        // Map sanitized skill names back to original skills for display
+        const enhancedRecommendations = response.data.recommendations.map((rec) => {
+          // If we have the original skill name in our map, use it for display
+          if (skillMap[rec.skill]) {
+            return {
+              ...rec,
+              displaySkill: skillMap[rec.skill], // Add original skill name for display
+              skill: rec.skill, // Keep sanitized skill for internal use
+            };
+          }
+          return rec;
+        });
+
+        setRecommendations(enhancedRecommendations);
         open();
       } else {
         throw new Error(response.data.error || 'Failed to get learning recommendations');
@@ -135,21 +201,29 @@ const LearningRecommender = ({
   };
 
   const handleGetDetailedPlan = async (skill) => {
+    // Sanitize the skill before sending to the API
+    const sanitizedSkill = sanitizeSkill(skill);
+
     setDetailedPlanLoading(true);
-    setDetailedSkill(skill);
+    setDetailedSkill(skill); // Keep the original skill name for display
     setError(null);
     setActiveTab('detailed');
 
     try {
-      console.log('Requesting detailed learning plan for skill:', skill);
+      console.log('Requesting detailed learning plan for skill:', sanitizedSkill);
       const response = await axios.post('http://localhost:5050/api/learning-plan', {
-        skill,
+        skill: sanitizedSkill,
       });
 
       console.log('Received detailed plan response:', response.data);
 
       if (response.data.success && response.data.learning_plan) {
-        setDetailedPlan(response.data.learning_plan);
+        // Update the skill name in the response to the original skill name for display
+        const enhancedPlan = {
+          ...response.data.learning_plan,
+          displaySkill: skill, // Keep the original skill name for display
+        };
+        setDetailedPlan(enhancedPlan);
       } else {
         throw new Error(response.data.error || 'Failed to get detailed learning plan');
       }
@@ -272,7 +346,8 @@ const LearningRecommender = ({
       <Group position="apart">
         <Group>
           <Badge size="lg" color="blue">
-            {skillData.skill}
+            {/* Use the original skill name for display if available */}
+            {skillData.displaySkill || skillData.skill}
           </Badge>
         </Group>
         <ActionIcon variant="subtle" onClick={() => toggleSkill(skillData.skill)}>
@@ -344,7 +419,7 @@ const LearningRecommender = ({
               variant="light"
               size="sm"
               rightIcon={<IconArrowRight size={16} />}
-              onClick={() => handleGetDetailedPlan(skillData.skill)}
+              onClick={() => handleGetDetailedPlan(skillData.displaySkill || skillData.skill)}
             >
               Get Detailed Learning Plan
             </Button>
@@ -361,7 +436,7 @@ const LearningRecommender = ({
       <Stack spacing="md">
         <Group position="apart">
           <div>
-            <Title order={3}>{detailedPlan.skill}</Title>
+            <Title order={3}>{detailedPlan.displaySkill || detailedPlan.skill}</Title>
             <Text color="dimmed">{detailedPlan.overview}</Text>
           </div>
         </Group>
@@ -506,12 +581,32 @@ const LearningRecommender = ({
     );
   };
 
+  const renderTruncationNotice = () => {
+    if (!truncationNotice) return null;
+
+    return (
+      <Alert icon={<IconInfoCircle size={16} />} color="blue" title="Limited Results" mb="md">
+        {truncationNotice.message ||
+          `Showing recommendations for the first ${truncationNotice.displayed} skills out of ${truncationNotice.original} due to system limitations.`}
+        {truncationNotice.excess && truncationNotice.excess.length > 0 && (
+          <Text size="sm" mt="xs">
+            Skills not shown: {truncationNotice.excess.join(', ')}
+          </Text>
+        )}
+      </Alert>
+    );
+  };
+
+  // Check if we have too many skills and need to show a warning on the button
+  const tooManySkills = skills.length > 3;
+  const buttonTooltip = disabled
+    ? disabledTooltip
+    : tooManySkills
+      ? 'Note: Only the first 3 skills will be analyzed due to system limitations'
+      : 'Get personalized learning resources';
+
   const button = (
-    <Tooltip
-      label={disabled ? disabledTooltip : 'Get personalized learning resources'}
-      position="top"
-      disabled={!disabled}
-    >
+    <Tooltip label={buttonTooltip} position="top" disabled={!disabled && !tooManySkills}>
       <div style={{ width: '100%' }}>
         {' '}
         {/* Wrapper div to make tooltip work with disabled button */}
@@ -564,6 +659,8 @@ const LearningRecommender = ({
                     resources to help you excel.
                   </Alert>
                 )}
+
+                {renderTruncationNotice()}
 
                 {renderErrorAlert()}
 

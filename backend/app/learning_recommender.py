@@ -66,9 +66,16 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
         if not skills or not isinstance(skills, list) or len(skills) == 0:
             return {"success": False, "error": "No skills provided"}
 
-        # Limit to 5 skills to prevent token limits
+        # Log the original number of skills
+        original_skill_count = len(skills)
+        logger.info(f"Received request for {original_skill_count} skills: {skills}")
+
+        # Limit to 5 skills to prevent token limits, but don't return an error
+        truncated = False
         if len(skills) > 5:
+            logger.info(f"Truncating skills list from {len(skills)} to 5 skills")
             skills = skills[:5]
+            truncated = True
 
         skills_list = "\n".join([f"- {skill}" for skill in skills])
 
@@ -232,9 +239,18 @@ def generate_learning_recommendations(skills: List[str]) -> Dict[str, Any]:
                 if "platform" not in video:
                     video["platform"] = "YouTube"
 
-        return {"success": True, "recommendations": recommendations["recommendations"]}
+        # Add a note if we truncated the skills list
+        result = {"success": True, "recommendations": recommendations["recommendations"]}
+
+        if truncated:
+            result["truncated"] = True
+            result["original_count"] = original_skill_count
+            result["message"] = f"Only showing recommendations for the first 5 skills out of {original_skill_count} due to system limitations."
+
+        return result
 
     except Exception as e:
+        logger.error(f"Error generating learning recommendations: {str(e)}")
         return {"success": False, "error": f"Error generating learning recommendations: {str(e)}"}
 
 
