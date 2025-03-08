@@ -20,6 +20,7 @@ import { IconMoonStars, IconSun, IconBriefcase } from '@tabler/icons-react';
 import Home from './pages/Home';
 import EmailTools from './pages/EmailTools';
 import TemplateDownloads from './pages/TemplateDownloads';
+import InterviewPrep from './pages/InterviewPrep';
 import Sidebar from './components/Sidebar';
 import { themeConfig } from './theme';
 
@@ -134,6 +135,7 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/email-tools" element={<EmailTools />} />
                     <Route path="/templates" element={<TemplateDownloads />} />
+                    <Route path="/interview-prep" element={<InterviewPrep />} />
                   </Routes>
                 </Box>
               </AppShell>

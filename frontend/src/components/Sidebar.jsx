@@ -10,7 +10,13 @@ import {
   Divider,
 } from '@mantine/core';
 import { Link, useLocation } from 'react-router-dom';
-import { IconHome2, IconFileDownload, IconMail, IconBrandGithub } from '@tabler/icons-react';
+import {
+  IconHome2,
+  IconFileDownload,
+  IconMail,
+  IconBrandGithub,
+  IconMessageCircle,
+} from '@tabler/icons-react';
 
 const useStyles = createStyles((theme) => ({
   link: {
@@ -49,6 +55,7 @@ const data = [
   { link: '/', label: 'Job Fit Analysis', icon: IconHome2 },
   { link: '/templates', label: 'Resume Templates', icon: IconFileDownload },
   { link: '/email-tools', label: 'Email Tools', icon: IconMail },
+  { link: '/interview-prep', label: 'Interview Preparation', icon: IconMessageCircle },
 ];
 
 export function Sidebar({ opened }) {

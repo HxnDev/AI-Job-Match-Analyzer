@@ -6,6 +6,8 @@ from flask import Blueprint, jsonify, request
 from .ats_analyzer import analyze_ats_compatibility, generate_optimized_resume_sections
 from .cover_letter import generate_cover_letter
 from .email_reply import generate_email_reply
+from .interview_evaluator import evaluate_interview_answers
+from .interview_preparer import generate_interview_preparation_materials, generate_interview_questions
 from .learning_recommender import generate_detailed_learning_plan, generate_learning_recommendations
 from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
@@ -299,3 +301,47 @@ def get_email_tones():
     """Endpoint to get supported email tones"""
     email_tones = [{"code": "professional", "name": "Professional"}, {"code": "friendly", "name": "Friendly"}, {"code": "formal", "name": "Formal"}]
     return jsonify({"success": True, "tones": email_tones}), 200
+
+
+@api_bp.route("/interview-questions", methods=["POST"])
+def interview_questions():
+    """Endpoint to generate interview questions based on job details"""
+    data = request.json
+    if not data or not all(key in data for key in ["job_title", "company_name"]):
+        return jsonify({"success": False, "error": "Missing required job details"}), 400
+
+    # Create job details dictionary
+    job_details = {"job_title": data["job_title"], "company_name": data["company_name"], "job_description": data.get("job_description", ""), "job_link": data.get("job_link", "")}
+
+    logger.info(f"Generating interview questions for {job_details['job_title']} at {job_details['company_name']}")
+    result = generate_interview_questions(job_details)
+    return jsonify(result), 200 if result.get("success", False) else 400
+
+
+@api_bp.route("/interview-preparation", methods=["POST"])
+def interview_preparation():
+    """Endpoint to generate comprehensive interview preparation materials"""
+    data = request.json
+    if not data or not all(key in data for key in ["job_title", "company_name"]):
+        return jsonify({"success": False, "error": "Missing required job details"}), 400
+
+    # Create job details dictionary
+    job_details = {"job_title": data["job_title"], "company_name": data["company_name"], "job_description": data.get("job_description", ""), "job_link": data.get("job_link", "")}
+
+    logger.info(f"Generating interview preparation materials for {job_details['job_title']} at {job_details['company_name']}")
+    result = generate_interview_preparation_materials(job_details)
+    return jsonify(result), 200 if result.get("success", False) else 400
+
+
+@api_bp.route("/evaluate-answers", methods=["POST"])
+def evaluate_answers():
+    """Endpoint to evaluate interview answers"""
+    data = request.json
+    if not data or "question_answers" not in data or not isinstance(data["question_answers"], list):
+        return jsonify({"success": False, "error": "Missing or invalid question-answer pairs"}), 400
+
+    question_answers = data["question_answers"]
+
+    logger.info(f"Evaluating {len(question_answers)} interview answers")
+    result = evaluate_interview_answers(question_answers)
+    return jsonify(result), 200 if result.get("success", False) else 400
