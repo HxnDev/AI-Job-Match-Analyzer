@@ -100,10 +100,13 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
 
   // Handle answer submission for each question
   const handleAnswerSubmit = (answer, question) => {
+    // Check if answer is empty and provide default text if needed
+    const finalAnswer = answer.trim() ? answer : 'No answer provided within the time limit.';
+
     // Store the answer
     setAnswers((prev) => ({
       ...prev,
-      [question.id]: answer,
+      [question.id]: finalAnswer,
     }));
 
     // Move to next question or finish
@@ -123,7 +126,7 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
       // Format the questions and answers for submission
       const questionAnswers = selectedQuestions.map((question) => ({
         question,
-        answer: answers[question.id] || '', // Get answer or empty string if not answered
+        answer: answers[question.id] || 'No answer provided within the time limit.', // Default for unanswered questions
       }));
 
       const response = await axios.post('http://localhost:5050/api/evaluate-answers', {

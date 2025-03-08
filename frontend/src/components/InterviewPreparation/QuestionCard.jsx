@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Group,
@@ -44,7 +44,7 @@ const QuestionCard = ({
   const [showImportance, { toggle: toggleImportance }] = useDisclosure(false);
 
   // Set up timer if in interview mode with a time limit
-  React.useEffect(() => {
+  useEffect(() => {
     let timer = null;
 
     if (interviewMode && showTimer && timeLimit > 0) {
@@ -58,7 +58,7 @@ const QuestionCard = ({
 
           if (prev <= 1) {
             // Auto-submit when time is up
-            if (onAnswerSubmit) {
+            if (onAnswerSubmit && answer.trim()) {
               onAnswerSubmit(answer, question);
             }
             clearInterval(timer);
@@ -73,7 +73,7 @@ const QuestionCard = ({
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [interviewMode, showTimer, timeLimit]);
+  }, [interviewMode, showTimer, timeLimit, onAnswerSubmit, answer, question]);
 
   // Format time remaining in mm:ss format
   const formatTime = (seconds) => {
@@ -233,7 +233,9 @@ const QuestionCard = ({
                 ))
               : [
                   <List.Item key="default">Be concise and specific in your answer</List.Item>,
-                  <List.Item key="default2">Use concrete examples from your experience</List.Item>,
+                  <List.Item key="default2">
+                    Include relevant examples from your experience
+                  </List.Item>,
                 ]}
           </List>
         </Box>

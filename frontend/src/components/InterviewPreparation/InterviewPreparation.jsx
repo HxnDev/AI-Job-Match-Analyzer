@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
   Stack,
@@ -47,14 +47,10 @@ const InterviewPreparation = ({ jobDetails, onClose }) => {
     useDisclosure(false);
   const [evaluationResults, setEvaluationResults] = useState(null);
 
-  // Load interview questions when component mounts
-  useEffect(() => {
-    if (jobDetails) {
-      loadInterviewQuestions();
-    }
-  }, [jobDetails]);
+  // Load interview questions using useCallback to prevent dependency issues
+  const loadInterviewQuestions = useCallback(async () => {
+    if (!jobDetails) return;
 
-  const loadInterviewQuestions = async () => {
     setLoading(true);
     setError(null);
 
@@ -90,7 +86,14 @@ const InterviewPreparation = ({ jobDetails, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobDetails]);
+
+  // Load interview questions when component mounts
+  useEffect(() => {
+    if (jobDetails) {
+      loadInterviewQuestions();
+    }
+  }, [loadInterviewQuestions]);
 
   const handleStartMockInterview = () => {
     if (!interviewData || !interviewData.questions || interviewData.questions.length === 0) {
