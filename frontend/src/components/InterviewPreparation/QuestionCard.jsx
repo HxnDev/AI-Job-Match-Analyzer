@@ -47,33 +47,41 @@ const QuestionCard = ({
   useEffect(() => {
     let timer = null;
 
+    // Clear any existing timers first
     if (interviewMode && showTimer && timeLimit > 0) {
+      // Reset time remaining when component mounts or question changes
       setTimeRemaining(timeLimit);
+      setIsLowTime(false);
 
+      // Only start the timer if not paused
       timer = setInterval(() => {
         setTimeRemaining((prev) => {
+          // When time gets low, set isLowTime flag
           if (prev <= 11) {
             setIsLowTime(true);
           }
 
+          // If time is up, submit and clear timer
           if (prev <= 1) {
-            // Auto-submit when time is up
-            if (onAnswerSubmit && answer.trim()) {
+            if (onAnswerSubmit) {
               onAnswerSubmit(answer, question);
             }
-            clearInterval(timer);
             return 0;
           }
 
+          // Otherwise decrement the timer
           return prev - 1;
         });
       }, 1000);
     }
 
+    // Clean up function to clear the timer
     return () => {
-      if (timer) clearInterval(timer);
+      if (timer) {
+        clearInterval(timer);
+      }
     };
-  }, [interviewMode, showTimer, timeLimit, onAnswerSubmit, answer, question]);
+  }, [interviewMode, showTimer, timeLimit, question, onAnswerSubmit, answer]);
 
   // Format time remaining in mm:ss format
   const formatTime = (seconds) => {

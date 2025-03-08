@@ -118,26 +118,26 @@ def generate_interview_questions(job_details: Dict[str, str]) -> Dict[str, Any]:
 
             # Extract the JSON string
             extracted_json = json_str.group(1)
-            
+
             # More aggressive JSON cleaning
             # Replace single quotes with double quotes
             cleaned_json = re.sub(r"'([^']*)':", r'"\1":', extracted_json)
-            cleaned_json = re.sub(r': \'([^\']*)\'', r': "\1"', cleaned_json)
-            
+            cleaned_json = re.sub(r": \'([^\']*)\'", r': "\1"', cleaned_json)
+
             # Fix missing commas in arrays
             cleaned_json = re.sub(r'"\s*\n\s*"', '", "', cleaned_json)
-            
+
             # Fix trailing commas in arrays and objects
             cleaned_json = re.sub(r",\s*}", "}", cleaned_json)
             cleaned_json = re.sub(r",\s*]", "]", cleaned_json)
-            
+
             # Fix any JSON comments
-            cleaned_json = re.sub(r'//.*?\n', '', cleaned_json)
-            
+            cleaned_json = re.sub(r"//.*?\n", "", cleaned_json)
+
             # Fix any malformed quotes or escapes
             cleaned_json = cleaned_json.replace('\\"', '"')
             cleaned_json = re.sub(r'([^\\])"([^"]*)":', r'\1"\2":', cleaned_json)
-            
+
             logger.info(f"Cleaned JSON (first 200 chars): {cleaned_json[:200]}...")
 
             try:
@@ -146,17 +146,17 @@ def generate_interview_questions(job_details: Dict[str, str]) -> Dict[str, Any]:
                 logger.info("Successfully parsed JSON response")
             except json.JSONDecodeError as e:
                 logger.error(f"First JSON parsing attempt failed: {e}")
-                
+
                 # If direct parsing fails, try more aggressive cleaning or fallback to a minimal structure
                 try:
                     # Try to manually fix common issues like missing commas between objects
                     # This is a simplified approach - in a real system you might want more robust handling
-                    cleaned_json = re.sub(r'}\s*{', '},{', cleaned_json)
+                    cleaned_json = re.sub(r"}\s*{", "},{", cleaned_json)
                     interview_data = json.loads(cleaned_json)
                     logger.info("JSON parsed after additional cleaning")
-                except:
+                except json.JSONDecodeError as json_error:  # Specify the exception type
                     # If all parsing attempts fail, return a minimal structure
-                    logger.error("All JSON parsing attempts failed, using fallback structure")
+                    logger.error(f"All JSON parsing attempts failed: {str(json_error)}, using fallback structure")
                     interview_data = {
                         "questions": [
                             {
@@ -164,36 +164,20 @@ def generate_interview_questions(job_details: Dict[str, str]) -> Dict[str, Any]:
                                 "question": f"Tell me about your relevant experience for this {job_title} role.",
                                 "category": "Role-Specific",
                                 "difficulty": "Medium",
-                                "key_points": [
-                                    "Highlight relevant skills",
-                                    "Discuss similar past work",
-                                    "Connect experience to job requirements"
-                                ],
-                                "importance": "Establishes your qualifications for the position"
+                                "key_points": ["Highlight relevant skills", "Discuss similar past work", "Connect experience to job requirements"],
+                                "importance": "Establishes your qualifications for the position",
                             },
                             {
                                 "id": 2,
                                 "question": f"Why are you interested in working at {company_name}?",
                                 "category": "Company Knowledge",
                                 "difficulty": "Easy",
-                                "key_points": [
-                                    "Show research on company",
-                                    "Connect values to personal goals",
-                                    "Express genuine interest"
-                                ],
-                                "importance": "Demonstrates company fit and preparation"
-                            }
+                                "key_points": ["Show research on company", "Connect values to personal goals", "Express genuine interest"],
+                                "importance": "Demonstrates company fit and preparation",
+                            },
                         ],
-                        "preparation_tips": [
-                            "Research the company thoroughly",
-                            "Practice your responses out loud",
-                            "Prepare specific examples from your experience"
-                        ],
-                        "key_skills_to_emphasize": [
-                            "Communication", 
-                            "Problem-solving", 
-                            "Teamwork"
-                        ]
+                        "preparation_tips": ["Research the company thoroughly", "Practice your responses out loud", "Prepare specific examples from your experience"],
+                        "key_skills_to_emphasize": ["Communication", "Problem-solving", "Teamwork"],
                     }
 
             # Ensure required fields are present
@@ -242,40 +226,24 @@ def generate_interview_questions(job_details: Dict[str, str]) -> Dict[str, Any]:
                         "question": f"Tell me about your relevant experience for this {job_title} role.",
                         "category": "Role-Specific",
                         "difficulty": "Medium",
-                        "key_points": [
-                            "Highlight relevant skills",
-                            "Discuss similar past work",
-                            "Connect experience to job requirements"
-                        ],
-                        "importance": "Establishes your qualifications for the position"
+                        "key_points": ["Highlight relevant skills", "Discuss similar past work", "Connect experience to job requirements"],
+                        "importance": "Establishes your qualifications for the position",
                     },
                     {
                         "id": 2,
                         "question": f"Why are you interested in working at {company_name}?",
                         "category": "Company Knowledge",
                         "difficulty": "Easy",
-                        "key_points": [
-                            "Show research on company",
-                            "Connect values to personal goals",
-                            "Express genuine interest"
-                        ],
-                        "importance": "Demonstrates company fit and preparation"
-                    }
+                        "key_points": ["Show research on company", "Connect values to personal goals", "Express genuine interest"],
+                        "importance": "Demonstrates company fit and preparation",
+                    },
                 ],
-                "preparation_tips": [
-                    "Research the company thoroughly",
-                    "Practice your responses out loud",
-                    "Prepare specific examples from your experience"
-                ],
-                "key_skills_to_emphasize": [
-                    "Communication", 
-                    "Problem-solving", 
-                    "Teamwork"
-                ],
+                "preparation_tips": ["Research the company thoroughly", "Practice your responses out loud", "Prepare specific examples from your experience"],
+                "key_skills_to_emphasize": ["Communication", "Problem-solving", "Teamwork"],
                 "job_title": job_title,
-                "company_name": company_name
+                "company_name": company_name,
             }
-            
+
             return {"success": True, "interview_data": fallback_data, "note": "Using fallback questions due to processing error"}
 
     except Exception as e:
@@ -372,8 +340,9 @@ def generate_company_research(company_name: str) -> Dict[str, Any]:
                             f"Review {company_name}'s culture and work environment",
                         ],
                     }
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as json_error:
             # Fallback to default list
+            logger.error(f"Error parsing company research JSON: {str(json_error)}")
             return {
                 "success": True,
                 "research_points": [

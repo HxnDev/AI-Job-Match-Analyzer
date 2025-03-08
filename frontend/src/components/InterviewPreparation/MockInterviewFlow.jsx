@@ -111,6 +111,7 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
 
     // Move to next question or finish
     if (currentQuestionIndex < selectedQuestions.length - 1) {
+      // Important: Reset any timer-related state here
       setCurrentQuestionIndex((prevIndex) => prevIndex + 1);
     } else {
       // If this was the last question, submit all answers for evaluation

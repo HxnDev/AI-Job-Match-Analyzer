@@ -93,7 +93,7 @@ const InterviewPreparation = ({ jobDetails, onClose }) => {
     if (jobDetails) {
       loadInterviewQuestions();
     }
-  }, [loadInterviewQuestions]);
+  }, [loadInterviewQuestions, jobDetails]);
 
   const handleStartMockInterview = () => {
     if (!interviewData || !interviewData.questions || interviewData.questions.length === 0) {
