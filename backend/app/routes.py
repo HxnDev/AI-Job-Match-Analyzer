@@ -83,15 +83,12 @@ def analyze():
 def health_check():
     """Health check endpoint"""
     from .api_key_setup import get_api_key
-    
+
     # Check if API key is configured
     api_key = get_api_key()
     api_key_status = "configured" if api_key else "missing"
-    
-    return jsonify({
-        "status": "healthy", 
-        "api_key_status": api_key_status
-    }), 200
+
+    return jsonify({"status": "healthy", "api_key_status": api_key_status}), 200
 
 
 # Keep all other endpoints the same
