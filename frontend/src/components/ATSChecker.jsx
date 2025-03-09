@@ -399,7 +399,8 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
         loading={loading}
         leftIcon={<IconFileCheck size={16} />}
         color="cyan"
-        variant="light"
+        variant="gradient"
+        gradient={{ from: '#4E65FF', to: '#92EFFD' }}
         fullWidth
       >
         Check ATS Compatibility

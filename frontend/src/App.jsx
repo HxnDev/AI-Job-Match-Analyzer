@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import {
   MantineProvider,
   AppShell,
@@ -76,18 +76,20 @@ function App() {
                             <IconBriefcase size={24} />
                           </Avatar>
                           <MediaQuery smallerThan="sm" styles={{ display: 'none' }}>
-                            <Title
-                              order={3}
-                              sx={() => ({
-                                background: 'linear-gradient(45deg, #3498db 0%, #2E86C1 100%)',
-                                backgroundClip: 'text',
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                fontWeight: 800,
-                              })}
-                            >
-                              JobFit
-                            </Title>
+                            <Link to="/" style={{ textDecoration: 'none' }}>
+                              <Title
+                                order={3}
+                                sx={() => ({
+                                  background: 'linear-gradient(45deg, #3498db 0%, #2E86C1 100%)',
+                                  backgroundClip: 'text',
+                                  WebkitBackgroundClip: 'text',
+                                  WebkitTextFillColor: 'transparent',
+                                  fontWeight: 800,
+                                })}
+                              >
+                                JobFit
+                              </Title>
+                            </Link>
                           </MediaQuery>
                         </Group>
                       </Group>

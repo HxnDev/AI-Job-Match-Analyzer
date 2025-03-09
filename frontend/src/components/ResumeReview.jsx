@@ -11,6 +11,7 @@ import {
   Modal,
   Textarea,
 } from '@mantine/core';
+import { IconFileAnalytics } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import axios from 'axios';
 
@@ -168,17 +169,18 @@ const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFi
     <>
       <Button.Group>
         <Button
-          variant="light"
-          color="violet"
+          variant="gradient"
+          gradient={{ from: '#11998E', to: '#38EF7D' }}
           onClick={() => handleGetReview()}
           loading={loading}
           style={{ flexGrow: 1 }}
+          leftIcon={<IconFileAnalytics size={16} />}
         >
           Get Resume Review
         </Button>
         <Button
-          variant="light"
-          color="teal"
+          variant="gradient"
+          gradient={{ from: '#11998E', to: '#38EF7D' }}
           onClick={handleOpenCustomInstruction}
           disabled={loading}
           style={{ flexBasis: 'auto' }}
