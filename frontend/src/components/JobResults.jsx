@@ -23,11 +23,11 @@ import {
   IconChevronDown,
   IconLanguage,
   IconPlus,
-  IconFileDescription,
   IconCopy,
   IconCheck,
   IconMessageCircle,
   IconFileText,
+  IconPencil,
 } from '@tabler/icons-react';
 import ResumeReview from './ResumeReview';
 import LanguageSelector from './LanguageSelector';
@@ -340,8 +340,7 @@ const JobResults = ({ results, resumeFile }) => {
                         Generate Cover Letter
                       </Button>
                       <Button
-                        variant="gradient"
-                        gradient={{ from: '#662D8C', to: '#ED1E79' }}
+                        variant="filled"
                         style={{
                           flexGrow: 0,
                           paddingLeft: '8px',
@@ -349,6 +348,7 @@ const JobResults = ({ results, resumeFile }) => {
                           borderTopLeftRadius: 0,
                           borderBottomLeftRadius: 0,
                           borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+                          backgroundColor: '#ED1E79',
                         }}
                       >
                         <Group spacing={2}>
@@ -389,18 +389,18 @@ const JobResults = ({ results, resumeFile }) => {
                     onClick={() => handleGenerateMotivationalLetter(job)}
                     loading={loadingMotivation[job.job_title + job.company_name]}
                     style={{ flexGrow: 1 }}
-                    leftIcon={<IconFileDescription size={16} />}
+                    leftIcon={<IconPencil size={16} />}
                   >
                     Letter of Motivation
                   </Button>
                   <Button
-                    variant="gradient"
-                    gradient={{ from: '#D4145A', to: '#FBB03B' }}
+                    variant="filled"
                     style={{
                       flexGrow: 0,
                       paddingLeft: '8px',
                       paddingRight: '8px',
                       borderLeft: '1px solid rgba(255, 255, 255, 0.2)',
+                      backgroundColor: '#FBB03B',
                     }}
                     onClick={() => handleOpenMotivationCustomInstruction(job)}
                   >
@@ -429,7 +429,7 @@ const JobResults = ({ results, resumeFile }) => {
             {/* Interview Preparation Button */}
             <Button
               variant="gradient"
-              gradient={{ from: '#93A5CF', to: '#E4EfE9' }}
+              gradient={{ from: '#6a82fb', to: '#FC5C7D' }}
               fullWidth
               leftIcon={<IconMessageCircle size={16} />}
               onClick={() => handleOpenInterviewPrep(job)}

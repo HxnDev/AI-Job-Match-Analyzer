@@ -25,6 +25,7 @@ import {
   IconAlertTriangle,
   IconFileCheck,
   IconCopy,
+  IconRobot,
 } from '@tabler/icons-react';
 import axios from 'axios';
 
@@ -397,10 +398,10 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
       <Button
         onClick={handleATSCheck}
         loading={loading}
-        leftIcon={<IconFileCheck size={16} />}
+        leftIcon={<IconRobot size={16} />}
         color="cyan"
         variant="gradient"
-        gradient={{ from: '#4E65FF', to: '#92EFFD' }}
+        gradient={{ from: '#330867', to: '#30cfd0' }}
         fullWidth
       >
         Check ATS Compatibility

@@ -616,7 +616,7 @@ const LearningRecommender = ({
           leftIcon={<IconSchool size={16} />}
           color="violet"
           variant="gradient"
-          gradient={{ from: '#FFECD2', to: '#FCB69F' }}
+          gradient={{ from: '#f857a6', to: '#ff5858' }}
           fullWidth
           disabled={disabled}
         >
