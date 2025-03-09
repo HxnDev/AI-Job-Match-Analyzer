@@ -22,6 +22,7 @@ import EmailTools from './pages/EmailTools';
 import TemplateDownloads from './pages/TemplateDownloads';
 import InterviewPrep from './pages/InterviewPrep';
 import Sidebar from './components/Sidebar';
+import NoticeBanner from './components/NoticeBanner';
 import { themeConfig } from './theme';
 
 function App() {
@@ -127,6 +128,7 @@ function App() {
                   },
                 })}
               >
+                <NoticeBanner />
                 <Box
                   sx={{
                     height: '100%',
