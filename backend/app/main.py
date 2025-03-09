@@ -3,14 +3,16 @@ Entry point module for the Flask application.
 This module initializes and runs the Flask server.
 """
 
+import logging
 import os
 import sys
-import webbrowser
 import threading
 import time
-import logging
+import webbrowser
+
 from . import create_app
 from .api_key_setup import get_api_key, setup_api_key
+
 
 # Configure logging
 logging.basicConfig(

@@ -3,9 +3,11 @@ Frontend serving module.
 This module handles serving the static React frontend files from the Flask backend.
 """
 
-import os
 import logging
+import os
+
 from flask import send_from_directory
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

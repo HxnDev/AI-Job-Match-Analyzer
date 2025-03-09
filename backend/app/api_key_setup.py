@@ -3,12 +3,13 @@ API key setup utility module.
 This module provides a GUI utility to set up and manage the Gemini API key.
 """
 
+import json
+import logging
 import os
 import sys
-import json
 import tkinter as tk
-from tkinter import simpledialog, messagebox
-import logging
+from tkinter import messagebox, simpledialog
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
