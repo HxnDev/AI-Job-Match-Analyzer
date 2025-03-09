@@ -1,0 +1,3 @@
+@echo off
+echo Starting JobFit...
+start /B "" "%~dp0\JobFit.exe"

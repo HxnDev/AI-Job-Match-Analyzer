@@ -17,7 +17,8 @@ from .resume_analyzer import analyze_resume, generate_resume_review
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create blueprint
+# Create blueprint with an explicit url_prefix
+# This ensures our API routes don't conflict with frontend routes
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
 
@@ -44,7 +45,7 @@ def analyze():
 
         # Ensure it's a list (even if a single job came through)
         if not isinstance(job_details, list):
-            job_details = [job_details]  # Ensure it’s always a list
+            job_details = [job_details]  # Ensure it's always a list
 
     except json.JSONDecodeError as e:
         # Log the error and problematic string for debugging
@@ -77,6 +78,24 @@ def analyze():
         return jsonify(result), 400
 
 
+# Add health check endpoint
+@api_bp.route("/health", methods=["GET"])
+def health_check():
+    """Health check endpoint"""
+    from .api_key_setup import get_api_key
+    
+    # Check if API key is configured
+    api_key = get_api_key()
+    api_key_status = "configured" if api_key else "missing"
+    
+    return jsonify({
+        "status": "healthy", 
+        "api_key_status": api_key_status
+    }), 200
+
+
+# Keep all other endpoints the same
+# [... rest of the routes.py file ...]
 @api_bp.route("/ats-check", methods=["POST"])
 def ats_check():
     """Endpoint to analyze resume for ATS compatibility"""
@@ -221,12 +240,6 @@ def email_reply():
 
     result = generate_email_reply(data["email_content"], tone, language)
     return jsonify(result), 200 if result.get("success", False) else 400
-
-
-@api_bp.route("/health", methods=["GET"])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({"status": "healthy"}), 200
 
 
 @api_bp.route("/review-resume", methods=["POST"])
