@@ -17,7 +17,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 import {
   IconChevronDown,
@@ -28,14 +28,18 @@ import {
   IconMessageCircle,
   IconFileText,
   IconPencil,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import ResumeReview from './ResumeReview';
 import LanguageSelector from './LanguageSelector';
 import ATSChecker from './ATSChecker';
 import LearningRecommender from './LearningRecommender';
 import InterviewPreparation from './InterviewPreparation/InterviewPreparation';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
+import { ApiKeyContext } from '../App';
 
 const JobResults = ({ results, resumeFile }) => {
+  const { hasApiKey, refreshApiKeyStatus } = useContext(ApiKeyContext);
   const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterOpened, { open: openCoverLetter, close: closeCoverLetter }] =
     useDisclosure(false);
@@ -67,12 +71,42 @@ const JobResults = ({ results, resumeFile }) => {
   // Interview preparation state
   const [interviewPrepOpened, setInterviewPrepOpened] = useState(false);
   const [currentInterviewJob, setCurrentInterviewJob] = useState(null);
+  const [apiError, setApiError] = useState(null);
+
+  // Memoize the handleApiError function to prevent useEffect reruns
+  const handleApiError = useCallback(
+    (error) => {
+      console.error('API Error:', error);
+
+      // Check if it's an API key validation error
+      if (error.response && error.response.status === 401) {
+        setApiError('Your API key appears to be invalid or expired. Please provide a new API key.');
+        refreshApiKeyStatus(); // This will check if the API key is still valid
+        return;
+      }
+
+      // Other error handling
+      const errorMessage = error.response?.data?.error || 'An error occurred. Please try again.';
+      setApiError(errorMessage);
+    },
+    [refreshApiKeyStatus]
+  );
 
   // Fetch available languages when component mounts
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get('http://localhost:5050/api/supported-languages');
+        const apiKey = getApiKey();
+        if (!apiKey) {
+          return;
+        }
+
+        const response = await axios.get(getApiUrl('supported-languages'), {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        });
+
         if (response.data.success) {
           const formattedLanguages = response.data.languages.map((lang) => ({
             value: lang.code,
@@ -83,6 +117,7 @@ const JobResults = ({ results, resumeFile }) => {
       } catch (error) {
         console.error('Error fetching supported languages:', error);
         // We'll keep the default languages already set
+        handleApiError(error);
       }
     };
 
@@ -93,24 +128,56 @@ const JobResults = ({ results, resumeFile }) => {
     if (savedLanguage) {
       setSelectedLanguage(savedLanguage);
     }
-  }, []);
+  }, [handleApiError]);
 
   // Make sure results is treated as an array
   if (!results || !Array.isArray(results) || results.length === 0) return null;
 
+  // Check if we have a valid API key
+  if (!hasApiKey) {
+    return (
+      <Paper p="xl" withBorder>
+        <Stack align="center" spacing="md">
+          <IconAlertCircle size={48} color="red" />
+          <Title order={3} align="center">
+            API Key Required
+          </Title>
+          <Text align="center">
+            Your API key is missing or invalid. Please refresh the page and enter a valid Google
+            Gemini API key.
+          </Text>
+        </Stack>
+      </Paper>
+    );
+  }
+
   const handleGenerateCoverLetter = async (job, instruction = '') => {
     const jobId = job.job_title + job.company_name;
     setLoadingJobs((prev) => ({ ...prev, [jobId]: true }));
+    setApiError(null);
 
     try {
-      const response = await axios.post('http://localhost:5050/api/cover-letter', {
-        company_name: job.company_name,
-        job_title: job.job_title,
-        job_description: job.job_description || '',
-        job_link: job.job_link || '',
-        custom_instruction: instruction,
-        language: selectedLanguage,
-      });
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        getApiUrl('cover-letter'),
+        {
+          company_name: job.company_name,
+          job_title: job.job_title,
+          job_description: job.job_description || '',
+          job_link: job.job_link || '',
+          custom_instruction: instruction,
+          language: selectedLanguage,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       if (response.data.success) {
         setCoverLetter(response.data.cover_letter);
@@ -120,7 +187,7 @@ const JobResults = ({ results, resumeFile }) => {
       }
     } catch (error) {
       console.error('Error generating cover letter:', error);
-      alert(error.response?.data?.error || 'Error generating cover letter. Please try again.');
+      handleApiError(error);
     } finally {
       setLoadingJobs((prev) => ({ ...prev, [jobId]: false }));
     }
@@ -129,14 +196,28 @@ const JobResults = ({ results, resumeFile }) => {
   const handleGenerateMotivationalLetter = async (job, instruction = '') => {
     const jobId = job.job_title + job.company_name;
     setLoadingMotivation((prev) => ({ ...prev, [jobId]: true }));
+    setApiError(null);
 
     try {
-      const response = await axios.post('http://localhost:5050/api/motivational-letter', {
-        job_title: job.job_title,
-        company_name: job.company_name,
-        job_description: job.job_description || '',
-        custom_instruction: instruction,
-      });
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        getApiUrl('motivational-letter'),
+        {
+          job_title: job.job_title,
+          company_name: job.company_name,
+          job_description: job.job_description || '',
+          custom_instruction: instruction,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       if (response.data.success) {
         setMotivationalLetter(response.data.letter);
@@ -146,9 +227,7 @@ const JobResults = ({ results, resumeFile }) => {
       }
     } catch (error) {
       console.error('Error generating motivational letter:', error);
-      alert(
-        error.response?.data?.error || 'Error generating motivational letter. Please try again.'
-      );
+      handleApiError(error);
     } finally {
       setLoadingMotivation((prev) => ({ ...prev, [jobId]: false }));
     }
@@ -211,6 +290,17 @@ const JobResults = ({ results, resumeFile }) => {
 
   return (
     <Stack spacing="xl">
+      {apiError && (
+        <Paper p="md" withBorder sx={{ backgroundColor: '#FFEAEA', borderColor: '#FF6B6B' }}>
+          <Group spacing="sm">
+            <IconAlertCircle size={24} color="#FF0000" />
+            <Text weight={500} color="#D10000">
+              {apiError}
+            </Text>
+          </Group>
+        </Paper>
+      )}
+
       <Paper shadow="md" radius="md" p="xl" withBorder>
         <Stack spacing="md">
           <Title order={2} align="center" color="blue">

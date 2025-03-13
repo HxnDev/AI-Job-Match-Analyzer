@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   Paper,
   Text,
@@ -10,12 +10,16 @@ import {
   Button,
   Modal,
   Textarea,
+  Alert,
 } from '@mantine/core';
-import { IconClipboardCheck } from '@tabler/icons-react';
+import { IconClipboardCheck, IconAlertCircle } from '@tabler/icons-react';
 import { useDisclosure } from '@mantine/hooks';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
+import { ApiKeyContext } from '../App';
 
 const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFile }) => {
+  const { hasApiKey, refreshApiKeyStatus } = useContext(ApiKeyContext);
   const [review, setReview] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [reviewModalOpened, { open: openReviewModal, close: closeReviewModal }] =
@@ -23,21 +27,35 @@ const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFi
   const [customInstructionOpened, { open: openCustomInstruction, close: closeCustomInstruction }] =
     useDisclosure(false);
   const [customInstructions, setCustomInstructions] = React.useState('');
+  const [error, setError] = React.useState(null);
 
   const handleGetReview = async (instructions = '') => {
     if (!resumeFile) {
-      alert('Please upload a resume first');
+      setError('Please upload a resume first');
       return;
     }
 
     // Check if job description is available
     if (!jobDescription || jobDescription.trim() === '') {
-      alert('No job description available. Please try with a different job.');
+      setError('No job description available. Please try with a different job.');
+      return;
+    }
+
+    // Check if API key is available
+    if (!hasApiKey) {
+      setError('API key is missing or invalid. Please refresh the page and enter a valid API key.');
       return;
     }
 
     setLoading(true);
+    setError(null);
+
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
       const formData = new FormData();
       formData.append('resume', resumeFile);
       formData.append('job_description', jobDescription);
@@ -60,9 +78,10 @@ const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFi
         formData.append('custom_instructions', instructions);
       }
 
-      const response = await axios.post('http://localhost:5050/api/review-resume', formData, {
+      const response = await axios.post(getApiUrl('review-resume'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'X-API-KEY': apiKey,
         },
       });
 
@@ -77,18 +96,16 @@ const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFi
       // Get a more detailed error message if available
       let errorMessage = 'Error getting resume review. Please try again.';
 
-      if (error.response && error.response.data) {
-        if (error.response.data.error) {
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = 'Your API key appears to be invalid. Please refresh and enter a new key.';
+          refreshApiKeyStatus(); // This will check if the API key is still valid
+        } else if (error.response.data && error.response.data.error) {
           errorMessage = error.response.data.error;
-        }
-
-        // Include debug info if available (only in development)
-        if (error.response.data.debug_info) {
-          console.error('Debug info:', error.response.data.debug_info);
         }
       }
 
-      alert(errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -167,6 +184,18 @@ const ResumeReview = ({ jobLink, jobTitle, jobDescription, companyName, resumeFi
 
   return (
     <>
+      {error && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="red"
+          mb="md"
+          withCloseButton
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
+
       <Button.Group>
         <Button
           variant="gradient"

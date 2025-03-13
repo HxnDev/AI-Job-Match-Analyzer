@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Button,
   Modal,
@@ -16,6 +16,7 @@ import {
   Tooltip,
   Divider,
   CopyButton,
+  Alert,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -26,30 +27,48 @@ import {
   IconFileCheck,
   IconCopy,
   IconRobot,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
+import { ApiKeyContext } from '../App';
 
 const ATSChecker = ({ resumeFile, jobDescription }) => {
+  const { hasApiKey, refreshApiKeyStatus } = useContext(ApiKeyContext);
   const [opened, { open, close }] = useDisclosure(false);
   const [loading, setLoading] = useState(false);
   const [atsResults, setAtsResults] = useState(null);
   const [optimizedSections, setOptimizedSections] = useState(null);
   const [optimizeLoading, setOptimizeLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleATSCheck = async () => {
     if (!resumeFile) {
-      alert('Please upload a resume first');
+      setError('Please upload a resume first');
+      return;
+    }
+
+    if (!hasApiKey) {
+      setError('API key is missing or invalid. Please refresh the page and enter a valid API key.');
       return;
     }
 
     setLoading(true);
+    setError(null);
+
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
       const formData = new FormData();
       formData.append('resume', resumeFile);
 
-      const response = await axios.post('http://localhost:5050/api/ats-check', formData, {
+      const response = await axios.post(getApiUrl('ats-check'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'X-API-KEY': apiKey,
         },
       });
 
@@ -61,27 +80,54 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
       }
     } catch (error) {
       console.error('Error checking ATS compatibility:', error);
-      alert(error.response?.data?.error || 'Error checking ATS compatibility. Please try again.');
+
+      // Check if it's an API key issue
+      if (error.response && error.response.status === 401) {
+        setError('Your API key appears to be invalid. Please refresh and enter a new key.');
+        refreshApiKeyStatus(); // This will check if the API key is still valid
+      } else {
+        setError(
+          error.response?.data?.error || 'Error checking ATS compatibility. Please try again.'
+        );
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOptimizeResume = async (jobDescription) => {
+  const handleOptimizeResume = async () => {
     if (!resumeFile) {
-      alert('Please upload a resume first');
+      setError('Please upload a resume first');
+      return;
+    }
+
+    if (!jobDescription) {
+      setError('Please provide a job description to optimize your resume');
+      return;
+    }
+
+    if (!hasApiKey) {
+      setError('API key is missing or invalid. Please refresh the page and enter a valid API key.');
       return;
     }
 
     setOptimizeLoading(true);
+    setError(null);
+
     try {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
       const formData = new FormData();
       formData.append('resume', resumeFile);
       formData.append('job_description', jobDescription);
 
-      const response = await axios.post('http://localhost:5050/api/ats-optimize', formData, {
+      const response = await axios.post(getApiUrl('ats-optimize'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'X-API-KEY': apiKey,
         },
       });
 
@@ -92,7 +138,14 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
       }
     } catch (error) {
       console.error('Error optimizing resume:', error);
-      alert(error.response?.data?.error || 'Error optimizing resume. Please try again.');
+
+      // Check if it's an API key issue
+      if (error.response && error.response.status === 401) {
+        setError('Your API key appears to be invalid. Please refresh and enter a new key.');
+        refreshApiKeyStatus(); // This will check if the API key is still valid
+      } else {
+        setError(error.response?.data?.error || 'Error optimizing resume. Please try again.');
+      }
     } finally {
       setOptimizeLoading(false);
     }
@@ -395,6 +448,18 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
 
   return (
     <>
+      {error && (
+        <Alert
+          icon={<IconAlertCircle size={16} />}
+          color="red"
+          mb="md"
+          withCloseButton
+          onClose={() => setError(null)}
+        >
+          {error}
+        </Alert>
+      )}
+
       <Button
         onClick={handleATSCheck}
         loading={loading}
@@ -435,7 +500,7 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
                 <Tabs.Tab value="issues">Issues & Suggestions</Tabs.Tab>
                 <Tabs.Tab
                   value="optimize"
-                  onClick={() => !optimizedSections && handleOptimizeResume(jobDescription || '')}
+                  onClick={() => !optimizedSections && handleOptimizeResume()}
                 >
                   ATS Optimization
                 </Tabs.Tab>
@@ -462,7 +527,7 @@ const ATSChecker = ({ resumeFile, jobDescription }) => {
                       Get ATS-optimized versions of your resume sections based on your target job.
                     </Text>
                     <Button
-                      onClick={() => handleOptimizeResume(jobDescription || '')}
+                      onClick={handleOptimizeResume}
                       loading={optimizeLoading}
                       disabled={!jobDescription}
                     >

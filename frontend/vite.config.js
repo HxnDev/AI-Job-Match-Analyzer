@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     plugins: [react()],
+    base: '/JobFit/', // Base path for GitHub Pages deployment
     server: {
         port: 5173,
         proxy: {
@@ -12,5 +13,11 @@ export default defineConfig({
                 secure: false,
             },
         },
+    },
+    build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        // Ensure source maps are not included in production
+        sourcemap: process.env.NODE_ENV !== 'production',
     },
 });

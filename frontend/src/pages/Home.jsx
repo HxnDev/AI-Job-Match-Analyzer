@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Container,
   Stack,
@@ -11,10 +11,17 @@ import {
   Transition,
   useMantineTheme,
   Space,
+  Alert,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { notifications } from '@mantine/notifications';
-import { IconStars, IconFileUpload, IconBriefcase, IconChevronRight } from '@tabler/icons-react';
+import {
+  IconStars,
+  IconFileUpload,
+  IconBriefcase,
+  IconChevronRight,
+  IconAlertCircle,
+} from '@tabler/icons-react';
 import axios from 'axios';
 
 // Components
@@ -26,8 +33,13 @@ import StepCard from '../components/StepCard';
 import FancyLoader from '../components/FancyLoader';
 import ErrorDisplay from '../components/ErrorDisplay';
 
+// API Configuration
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
+import { ApiKeyContext } from '../App';
+
 const Home = () => {
   const theme = useMantineTheme();
+  const { hasApiKey, refreshApiKeyStatus } = useContext(ApiKeyContext);
 
   // State for form data
   const [resumeFile, setResumeFile] = useState(null);
@@ -42,6 +54,7 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [activeStep, setActiveStep] = useState(1);
   const [showResultsAnimation, setShowResultsAnimation] = useState(false);
+  const [apiKeyError, setApiKeyError] = useState(false);
 
   // Check which steps are completed
   const isStep1Complete = resumeFile || resumeText;
@@ -68,7 +81,18 @@ const Home = () => {
       return;
     }
 
+    if (!hasApiKey) {
+      setApiKeyError(true);
+      notifications.show({
+        title: 'API Key Required',
+        message: 'Please provide a valid Google Gemini API key',
+        color: 'red',
+      });
+      return;
+    }
+
     setError(null);
+    setApiKeyError(false);
     handlers.open();
     const formData = new FormData();
 
@@ -104,9 +128,15 @@ const Home = () => {
     }
 
     try {
-      const response = await axios.post('http://localhost:5050/api/analyze', formData, {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(getApiUrl('analyze'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'X-API-KEY': apiKey,
         },
       });
 
@@ -129,7 +159,15 @@ const Home = () => {
       }
     } catch (error) {
       console.error('Error analyzing resume:', error);
-      setError(error.response?.data?.error || 'Error analyzing resume. Please try again.');
+
+      // Check if it's an API key issue
+      if (error.response && error.response.status === 401) {
+        setApiKeyError(true);
+        refreshApiKeyStatus(); // Will update the API key status in context
+        setError('Your API key appears to be invalid. Please refresh and enter a new API key.');
+      } else {
+        setError(error.response?.data?.error || 'Error analyzing resume. Please try again.');
+      }
     } finally {
       handlers.close();
     }
@@ -153,6 +191,13 @@ const Home = () => {
         description="Upload your resume and add job details to analyze your match score. Our AI-powered tool will help you understand how well your skills match the positions you're interested in."
         icon={<IconStars size={28} />}
       />
+
+      {apiKeyError && (
+        <Alert icon={<IconAlertCircle size={16} />} title="API Key Error" color="red" mb="lg">
+          Your API key is missing or invalid. Please refresh the page and enter a valid Google
+          Gemini API key.
+        </Alert>
+      )}
 
       <Stack spacing="xl">
         {/* Step 1: Resume Upload */}
