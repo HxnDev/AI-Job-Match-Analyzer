@@ -45,30 +45,30 @@ def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
 
         # Use context manager for better resource management
         text = ""
-        
+
         # Open PDF reader with the buffer
         pdf = PdfReader(pdf_buffer)
-        
+
         # Process pages one by one to reduce memory usage
         for page in pdf.pages:
             # Extract text from the page and append to result
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
-                
+
         # Close the buffer explicitly
         pdf_buffer.close()
-        
+
         # Force garbage collection to free up memory
         gc.collect()
-        
+
         # Truncate very long resume content to prevent token limits
         if len(text) > MAX_RESUME_CONTENT_LENGTH:
             logger.info(f"Truncating resume content from {len(text)} to {MAX_RESUME_CONTENT_LENGTH} chars")
             text = text[:MAX_RESUME_CONTENT_LENGTH] + "..."
-            
+
         return text
-        
+
     except Exception as e:
         logger.error(f"Error reading PDF: {str(e)}", exc_info=True)
         # Clean up resources on error
@@ -363,14 +363,14 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
             prompt_resume = resume_content[:MAX_RESUME_CONTENT_LENGTH] + "..."
         else:
             prompt_resume = resume_content
-            
+
         # Truncate job description if it's very long
         if len(job_description) > MAX_JOB_DESCRIPTION_LENGTH:
             logger.info(f"Truncating job description for review from {len(job_description)} to {MAX_JOB_DESCRIPTION_LENGTH} chars")
             prompt_job = job_description[:MAX_JOB_DESCRIPTION_LENGTH] + "..."
         else:
             prompt_job = job_description
-            
+
         base_prompt = f"""
         You are a professional resume reviewer and career coach. Review this resume against the job description
         and provide detailed, actionable feedback to help improve the resume.
@@ -483,7 +483,7 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
             except json.JSONDecodeError as e:
                 # Clean up memory on error
                 gc.collect()
-                
+
                 return {
                     "success": False,
                     "error": f"Invalid response format from AI model: {str(e)}",

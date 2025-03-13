@@ -37,6 +37,7 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
 
 // Helper function to generate search URLs based on content
 const generateSearchUrl = (title, platform) => {
@@ -165,9 +166,24 @@ const LearningRecommender = ({
 
     try {
       console.log('Requesting learning recommendations for skills:', skillsToUse);
-      const response = await axios.post('http://localhost:5050/api/learning-recommendations', {
-        skills: skillsToUse,
-      });
+
+      // Get API key from storage
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        getApiUrl('learning-recommendations'),
+        {
+          skills: skillsToUse,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       console.log('Received response:', response.data);
 
@@ -211,9 +227,24 @@ const LearningRecommender = ({
 
     try {
       console.log('Requesting detailed learning plan for skill:', sanitizedSkill);
-      const response = await axios.post('http://localhost:5050/api/learning-plan', {
-        skill: sanitizedSkill,
-      });
+
+      // Get API key from storage
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        getApiUrl('learning-plan'),
+        {
+          skill: sanitizedSkill,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       console.log('Received detailed plan response:', response.data);
 

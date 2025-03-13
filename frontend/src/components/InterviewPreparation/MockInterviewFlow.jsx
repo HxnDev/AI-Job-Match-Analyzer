@@ -13,6 +13,7 @@ import {
   LoadingOverlay,
   Center,
   useMantineTheme,
+  Alert,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
@@ -21,8 +22,10 @@ import {
   IconPlayerPause,
   IconPlayerPlay,
   IconClock,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../../utils/apiConfig';
 
 import QuestionCard from './QuestionCard';
 
@@ -41,6 +44,7 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
   const [totalTime, setTotalTime] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [interviewStarted, setInterviewStarted] = useState(false);
+  const [error, setError] = useState(null);
 
   // Set up questions for the interview
   useEffect(() => {
@@ -122,17 +126,32 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
   // Submit all answers for evaluation
   const handleSubmitInterview = async () => {
     setSubmitting(true);
+    setError(null);
 
     try {
+      // Get API key from storage
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
       // Format the questions and answers for submission
       const questionAnswers = selectedQuestions.map((question) => ({
         question,
         answer: answers[question.id] || 'No answer provided within the time limit.', // Default for unanswered questions
       }));
 
-      const response = await axios.post('http://localhost:5050/api/evaluate-answers', {
-        question_answers: questionAnswers,
-      });
+      const response = await axios.post(
+        getApiUrl('evaluate-answers'),
+        {
+          question_answers: questionAnswers,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       if (response.data.success) {
         // Add interview metadata to the results
@@ -154,6 +173,7 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
       }
     } catch (error) {
       console.error('Error evaluating interview answers:', error);
+      setError(error.response?.data?.error || 'Error evaluating answers. Please try again.');
       notifications.show({
         title: 'Error',
         message: 'There was a problem evaluating your interview. Please try again.',
@@ -299,6 +319,12 @@ const MockInterviewFlow = ({ questions = [], jobDetails, onClose, onComplete }) 
       trapFocus
     >
       <LoadingOverlay visible={submitting} overlayBlur={2} />
+
+      {error && (
+        <Alert icon={<IconAlertCircle size={16} />} title="Error" color="red" mb="md">
+          {error}
+        </Alert>
+      )}
 
       <Stepper active={activeStep} breakpoint="sm" mb="xl">
         <Stepper.Step

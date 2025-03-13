@@ -38,6 +38,7 @@ import axios from 'axios';
 import PageHeader from '../components/PageHeader';
 import { MockInterviewFlow } from '../components/InterviewPreparation';
 import { InterviewFeedback } from '../components/InterviewPreparation';
+import { getApiKey } from '../utils/apiConfig';
 
 /**
  * Standalone page for interview preparation
@@ -70,11 +71,25 @@ const InterviewPrep = () => {
     setError(null);
 
     try {
-      const response = await axios.post('http://localhost:5050/api/interview-preparation', {
-        job_title: values.job_title,
-        company_name: values.company_name,
-        job_description: values.job_description,
-      });
+      // Get API key from storage
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        'http://localhost:5050/api/interview-preparation',
+        {
+          job_title: values.job_title,
+          company_name: values.company_name,
+          job_description: values.job_description,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey, // Add the API key to headers
+          },
+        }
+      );
 
       if (response.data.success) {
         setInterviewData(response.data.interview_data);

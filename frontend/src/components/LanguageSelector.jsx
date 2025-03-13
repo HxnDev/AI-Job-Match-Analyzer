@@ -1,6 +1,7 @@
 import { Select, Text } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
 
 const LanguageSelector = ({ value, onChange, label = 'Language' }) => {
   const [languages, setLanguages] = useState([{ value: 'en', label: 'English' }]);
@@ -9,7 +10,19 @@ const LanguageSelector = ({ value, onChange, label = 'Language' }) => {
   useEffect(() => {
     const fetchLanguages = async () => {
       try {
-        const response = await axios.get('http://localhost:5050/api/supported-languages');
+        // Get the API key
+        const apiKey = getApiKey();
+        if (!apiKey) {
+          console.warn('No API key available for fetching languages');
+          return;
+        }
+
+        const response = await axios.get(getApiUrl('supported-languages'), {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        });
+
         if (response.data.success) {
           const formattedLanguages = response.data.languages.map((lang) => ({
             value: lang.code,

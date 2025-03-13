@@ -59,6 +59,7 @@ export const validateApiKey = (apiKey) => {
 
 /**
  * Removes the stored API key
+ * @returns {boolean} Whether the operation was successful
  */
 export const clearApiKey = () => {
   try {

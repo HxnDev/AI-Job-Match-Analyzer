@@ -2,6 +2,7 @@ import json
 import logging
 import os
 
+import google.generativeai as genai
 from flask import Blueprint, jsonify, request
 
 from .ats_analyzer import analyze_ats_compatibility, generate_optimized_resume_sections
@@ -12,7 +13,6 @@ from .interview_preparer import generate_interview_preparation_materials, genera
 from .learning_recommender import generate_detailed_learning_plan, generate_learning_recommendations
 from .motivational_message import generate_motivational_letter
 from .resume_analyzer import analyze_resume, generate_resume_review
-import google.generativeai as genai
 
 
 # Configure logging
@@ -29,21 +29,21 @@ MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB in bytes
 def validate_api_key(api_key: str) -> bool:
     """
     Validate the format of a Google Gemini API key.
-    
+
     Args:
         api_key: The API key to validate
-        
+
     Returns:
         bool: Whether the key is valid
     """
     # Basic validation: Check if it's a non-empty string
     if not api_key or not isinstance(api_key, str) or not api_key.strip():
         return False
-    
+
     # Google Gemini API keys typically start with "AI"
     if not api_key.startswith("AI"):
         return False
-    
+
     # Additional validation can be added here
     return True
 
@@ -51,35 +51,35 @@ def validate_api_key(api_key: str) -> bool:
 def get_api_key_from_request():
     """
     Extract API key from request headers or query parameters.
-    
+
     Returns:
         str or None: The API key if found and valid, None otherwise
     """
     # Try to get from the X-API-KEY header (preferred method)
     api_key = request.headers.get("X-API-KEY")
-    
+
     # If not in headers, try query parameters
     if not api_key:
         api_key = request.args.get("api_key")
-    
+
     # If still not found, try form data (for multipart/form-data requests)
     if not api_key and request.form:
         api_key = request.form.get("api_key")
-        
+
     # Validate the key format
     if api_key and validate_api_key(api_key):
         return api_key
-        
+
     return None
 
 
 def configure_gemini_with_key(api_key: str) -> bool:
     """
     Configure the Gemini API with the provided key.
-    
+
     Args:
         api_key: API key to use
-        
+
     Returns:
         bool: Whether configuration was successful
     """
@@ -95,10 +95,10 @@ def configure_gemini_with_key(api_key: str) -> bool:
 def check_file_size(file) -> bool:
     """
     Check if file size is within limits.
-    
+
     Args:
         file: File object to check
-        
+
     Returns:
         bool: Whether file is within size limits
     """
@@ -107,7 +107,7 @@ def check_file_size(file) -> bool:
     file_size = file.tell()
     # Reset file position
     file.seek(0)
-    
+
     return file_size <= MAX_FILE_SIZE
 
 
@@ -115,9 +115,9 @@ def check_file_size(file) -> bool:
 def before_request():
     """Middleware to check API key for all requests except health check"""
     # Skip API key validation for health check endpoint and OPTIONS requests
-    if request.path == "/api/health" or request.method == 'OPTIONS':
+    if request.path == "/api/health" or request.method == "OPTIONS":
         return
-        
+
     # Get and validate API key
     api_key = get_api_key_from_request()
     if not api_key:
@@ -127,10 +127,12 @@ def before_request():
 @api_bp.route("/health", methods=["GET"])
 def health_check():
     """Health check endpoint"""
-    return jsonify({
-        "status": "healthy",
-        "version": "1.0.0",
-    }), 200
+    return jsonify(
+        {
+            "status": "healthy",
+            "version": "1.0.0",
+        }
+    ), 200
 
 
 @api_bp.route("/analyze", methods=["POST"])
@@ -140,11 +142,11 @@ def analyze():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-    
+
     if "resume" not in request.files:
         logger.error("No resume file received")
         return jsonify({"success": False, "error": "No resume file provided"}), 400
@@ -153,13 +155,13 @@ def analyze():
     # Check file size
     if not check_file_size(resume):
         return jsonify({"success": False, "error": f"Resume file too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"}), 400
-        
+
     # Get job details from the request
     job_details_str = request.form.get("job_details", "[]")
     if not job_details_str:
         # For backwards compatibility, check job_links as well
         job_details_str = request.form.get("job_links", "[]")
-        
+
     logger.info(f"Received resume: {resume.filename}")
     logger.info(f"Received job details: {job_details_str[:200]}")  # Print only first 200 chars
 
@@ -212,11 +214,11 @@ def ats_check():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     if "resume" not in request.files:
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
@@ -252,11 +254,11 @@ def ats_optimize():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     if "resume" not in request.files:
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
@@ -267,7 +269,7 @@ def ats_optimize():
     # Check file size
     if not check_file_size(resume):
         return jsonify({"success": False, "error": f"Resume file too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"}), 400
-        
+
     job_description = request.form["job_description"]
 
     if not resume.filename.endswith((".pdf", ".txt")):
@@ -297,11 +299,11 @@ def learning_recommendations():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or "skills" not in data or not isinstance(data["skills"], list):
         return jsonify({"success": False, "error": "No skills provided or invalid format"}), 400
@@ -317,11 +319,11 @@ def learning_plan():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or "skill" not in data:
         return jsonify({"success": False, "error": "No skill provided"}), 400
@@ -337,11 +339,11 @@ def generate_letter():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or not all(key in data for key in ["company_name", "job_title", "job_description"]):
         return jsonify({"success": False, "error": "Missing required job details"}), 400
@@ -366,11 +368,11 @@ def motivational_letter():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or "job_title" not in data:
         return jsonify({"success": False, "error": "Missing job title"}), 400
@@ -402,11 +404,11 @@ def email_reply():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or "email_content" not in data:
         return jsonify({"success": False, "error": "Missing email content"}), 400
@@ -428,11 +430,11 @@ def review_resume():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     if "resume" not in request.files:
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
@@ -443,7 +445,7 @@ def review_resume():
     # Check file size
     if not check_file_size(resume):
         return jsonify({"success": False, "error": f"Resume file too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"}), 400
-        
+
     job_description = request.form["job_description"]
     job_title = request.form.get("job_title", "")
     company_name = request.form.get("company_name", "")
@@ -515,11 +517,11 @@ def interview_questions():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or not all(key in data for key in ["job_title", "company_name"]):
         return jsonify({"success": False, "error": "Missing required job details"}), 400
@@ -539,11 +541,11 @@ def interview_preparation():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or not all(key in data for key in ["job_title", "company_name"]):
         return jsonify({"success": False, "error": "Missing required job details"}), 400
@@ -563,11 +565,11 @@ def evaluate_answers():
     api_key = get_api_key_from_request()
     if not api_key:
         return jsonify({"success": False, "error": "Missing or invalid API key"}), 401
-        
+
     # Configure Gemini with the key
     if not configure_gemini_with_key(api_key):
         return jsonify({"success": False, "error": "Failed to configure API"}), 500
-        
+
     data = request.json
     if not data or "question_answers" not in data or not isinstance(data["question_answers"], list):
         return jsonify({"success": False, "error": "Missing or invalid question-answer pairs"}), 400

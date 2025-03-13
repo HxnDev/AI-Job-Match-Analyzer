@@ -108,7 +108,7 @@ const Home = () => {
       // Convert job details to a JSON string
       const jobDetailsJson = JSON.stringify(jobDetails);
       formData.append('job_details', jobDetailsJson);
-      
+
       // For backward compatibility, also add as job_links
       formData.append('job_links', jobDetailsJson);
     } catch (error) {

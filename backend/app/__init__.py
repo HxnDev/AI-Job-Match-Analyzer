@@ -6,7 +6,6 @@ This module initializes the Flask application with necessary configurations.
 import os
 from importlib import import_module
 
-import google.generativeai as genai
 from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
@@ -24,15 +23,15 @@ def create_app() -> Flask:
 
     # Initialize Flask app
     app = Flask(__name__)
-    
+
     # Configure CORS - allow all origins in development and specific origins in production
     is_production = os.getenv("FLASK_ENV") == "production"
-    
+
     if is_production:
         # In production, allow specific origins
         allowed_origins = [
-            "https://hxndev.github.io",       # GitHub Pages domain
-            "http://localhost:5173"            # Local dev frontend (for testing)
+            "https://hxndev.github.io",  # GitHub Pages domain
+            "http://localhost:5173",  # Local dev frontend (for testing)
         ]
         CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
     else:

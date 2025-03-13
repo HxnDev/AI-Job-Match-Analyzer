@@ -28,6 +28,7 @@ import {
   IconDeviceAnalytics,
 } from '@tabler/icons-react';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../../utils/apiConfig';
 
 import QuestionCard from './QuestionCard';
 import InterviewFeedback from './InterviewFeedback';
@@ -55,6 +56,12 @@ const InterviewPreparation = ({ jobDetails, onClose }) => {
     setError(null);
 
     try {
+      // Get API key from storage
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
       // Prepare request data - ensure it's clean JSON
       const requestData = {
         job_title: jobDetails.job_title || '',
@@ -63,10 +70,11 @@ const InterviewPreparation = ({ jobDetails, onClose }) => {
         job_link: jobDetails.job_link || '',
       };
 
-      const response = await axios.post(
-        'http://localhost:5050/api/interview-preparation',
-        requestData
-      );
+      const response = await axios.post(getApiUrl('interview-preparation'), requestData, {
+        headers: {
+          'X-API-KEY': apiKey,
+        },
+      });
 
       if (response.data.success) {
         setInterviewData(response.data.interview_data);

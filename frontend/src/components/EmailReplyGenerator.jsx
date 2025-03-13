@@ -17,6 +17,7 @@ import { useDisclosure } from '@mantine/hooks';
 import { IconCheck, IconCopy, IconMail } from '@tabler/icons-react';
 import LanguageSelector from './LanguageSelector';
 import axios from 'axios';
+import { getApiUrl, getApiKey } from '../utils/apiConfig';
 
 const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
   const [opened, { open, close }] = useDisclosure(false);
@@ -30,6 +31,7 @@ const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
     { value: 'friendly', label: 'Friendly' },
     { value: 'formal', label: 'Formal' },
   ]);
+  // Removed unused error state variable
 
   // Update language when defaultLanguage prop changes
   useEffect(() => {
@@ -40,7 +42,19 @@ const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
   useEffect(() => {
     const fetchTones = async () => {
       try {
-        const response = await axios.get('http://localhost:5050/api/email-tones');
+        // Get the API key
+        const apiKey = getApiKey();
+        if (!apiKey) {
+          console.warn('No API key available for fetching email tones');
+          return;
+        }
+
+        const response = await axios.get(getApiUrl('email-tones'), {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        });
+
         if (response.data.success) {
           setAvailableTones(
             response.data.tones.map((tone) => ({
@@ -64,12 +78,28 @@ const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
     }
 
     setLoading(true);
+    // Removed setError(null) since we're not using error state
+
     try {
-      const response = await axios.post('http://localhost:5050/api/email-reply', {
-        email_content: emailContent,
-        tone: selectedTone,
-        language: selectedLanguage,
-      });
+      // Get the API key
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('No API key available');
+      }
+
+      const response = await axios.post(
+        getApiUrl('email-reply'),
+        {
+          email_content: emailContent,
+          tone: selectedTone,
+          language: selectedLanguage,
+        },
+        {
+          headers: {
+            'X-API-KEY': apiKey,
+          },
+        }
+      );
 
       if (response.data.success) {
         setReplyContent(response.data.reply);
@@ -81,6 +111,7 @@ const EmailReplyGenerator = ({ defaultLanguage = 'en' }) => {
       setReplyContent(
         'Sorry, we could not generate an email reply at this time. Please try again later.'
       );
+      // Removed setError since we're not using error state
     } finally {
       setLoading(false);
     }
