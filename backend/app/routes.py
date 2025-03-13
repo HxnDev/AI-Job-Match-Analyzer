@@ -114,8 +114,8 @@ def check_file_size(file) -> bool:
 @api_bp.before_request
 def before_request():
     """Middleware to check API key for all requests except health check"""
-    # Skip API key validation for health check endpoint
-    if request.path == "/api/health":
+    # Skip API key validation for health check endpoint and OPTIONS requests
+    if request.path == "/api/health" or request.method == 'OPTIONS':
         return
         
     # Get and validate API key
@@ -149,16 +149,19 @@ def analyze():
         logger.error("No resume file received")
         return jsonify({"success": False, "error": "No resume file provided"}), 400
 
-    job_details_str = request.form.get("job_links", "[]")  # Default to an empty list if missing
-
     resume = request.files["resume"]
     # Check file size
     if not check_file_size(resume):
         return jsonify({"success": False, "error": f"Resume file too large. Maximum size is {MAX_FILE_SIZE // (1024 * 1024)}MB"}), 400
         
-    job_details_str = request.form["job_links"]
+    # Get job details from the request
+    job_details_str = request.form.get("job_details", "[]")
+    if not job_details_str:
+        # For backwards compatibility, check job_links as well
+        job_details_str = request.form.get("job_links", "[]")
+        
     logger.info(f"Received resume: {resume.filename}")
-    logger.info(f"Received job links: {job_details_str[:200]}")  # Print only first 200 chars
+    logger.info(f"Received job details: {job_details_str[:200]}")  # Print only first 200 chars
 
     # Parse job details with better error handling
     try:

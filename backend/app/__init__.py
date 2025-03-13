@@ -25,23 +25,20 @@ def create_app() -> Flask:
     # Initialize Flask app
     app = Flask(__name__)
     
-    # Configure CORS based on environment
+    # Configure CORS - allow all origins in development and specific origins in production
     is_production = os.getenv("FLASK_ENV") == "production"
+    
     if is_production:
         # In production, allow specific origins
         allowed_origins = [
             "https://hxndev.github.io",       # GitHub Pages domain
-            "http://localhost:5173"            # Local dev frontend
+            "http://localhost:5173"            # Local dev frontend (for testing)
         ]
-        CORS(app, origins=allowed_origins, supports_credentials=True)
+        CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
     else:
-        # In development, allow all origins
-        CORS(app)
+        # In development, allow all origins with proper preflight handling
+        CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
 
-    # API key management is now handled per-request in routes
-    # Default Gemini configuration is still set up here without a key
-    # The actual key will be passed with each request
-    
     # Import and register blueprints
     # Using import_module to avoid circular imports
     routes = import_module(".routes", package="app")

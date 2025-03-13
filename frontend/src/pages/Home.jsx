@@ -104,13 +104,13 @@ const Home = () => {
       formData.append('resume', textFile, 'resume.txt');
     }
 
-    // Convert job details to a JSON string (Even if empty)
-    formData.append('job_links', JSON.stringify(jobDetails || []));
-
     try {
       // Convert job details to a JSON string
       const jobDetailsJson = JSON.stringify(jobDetails);
       formData.append('job_details', jobDetailsJson);
+      
+      // For backward compatibility, also add as job_links
+      formData.append('job_links', jobDetailsJson);
     } catch (error) {
       console.error('Error stringifying job details:', error);
       notifications.show({
