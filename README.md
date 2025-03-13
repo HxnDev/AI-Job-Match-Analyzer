@@ -1,228 +1,93 @@
-# AI Job Match Analyzer
+# JobFit - AI-Powered Job Application Assistant
 
-A powerful open-source tool that helps job seekers analyze their resumes against job descriptions and generate AI-powered cover letters. Built with React and Flask, it leverages Google's Gemini AI for intelligent analysis and runs completely locally.
+JobFit is an AI-powered tool that helps job seekers analyze their resumes against job descriptions, prepare for interviews, and create professional application materials.
+
+**Live Application:** [https://hxndev.github.io/JobFit/](https://hxndev.github.io/JobFit/)
+
+![JobFit Banner](https://i.ibb.co/tJG1GVN/jobfit-banner.png)
 
 ## Features
-- 📄 Resume Analysis: Upload PDF/TXT files or paste resume text directly
-- 🔗 Multiple Job Links: Analyze your resume against multiple job postings simultaneously
-- 🎯 Smart Matching: AI-powered skill matching and gap analysis
-- ✍️ Cover Letters: Generate tailored cover letters for each job
-- 📊 Resume Feedback: Get comprehensive suggestions to improve your resume
-- 🔒 Privacy-First: Runs locally, your data stays on your machine
-- 💰 Cost-Effective: Uses Gemini AI (free tier available)
 
-## Tech Stack
-### Frontend
-- React 18.2
-- Mantine UI 6.0.22 (for components and styling)
-- Vite (for development and building)
-- Axios (for API calls)
-- ESLint & Prettier (for code quality)
+### Resume Analysis
+- **Job Fit Analysis:** Compare your resume against job descriptions to receive a match percentage
+- **Skill Identification:** See which skills you have and which ones you need to develop
+- **Personalized Recommendations:** Get tailored advice to improve your application
 
-### Backend
-- Flask 2.2.5
-- Google Generative AI (Gemini)
-- PyPDF2 (for PDF processing)
-- Beautiful Soup 4 (for web scraping)
-- Ruff (for code quality)
+### Professional Content Generation
+- **Cover Letter Generator:** Create customized cover letters in multiple languages
+- **Letter of Motivation:** Generate compelling motivational letters explaining why you're the right fit
+- **Email Reply Tool:** Draft professional email responses to recruiters and hiring managers
 
-## Demo Video
+### ATS Optimization
+- **ATS Compatibility Check:** Analyze how well your resume will perform with Applicant Tracking Systems
+- **Keyword Analysis:** Identify missing keywords that could improve your resume's visibility
+- **Optimized Content:** Get ATS-friendly versions of your resume sections
 
-![Demo Video](https://github.com/HxnDev/AI-Job-Match-Analyzer/blob/main/frontend/public/JobAnalyzer-ezgif.com-video-to-gif-converter.gif)
+### Interview Preparation
+- **Custom Interview Questions:** Generate job-specific interview questions 
+- **Mock Interviews:** Practice with an AI-powered mock interview system
+- **Performance Feedback:** Receive detailed feedback on your interview answers
+- **Company Research Points:** Get suggestions for researching your target company
 
+### Learning Resources
+- **Skill Development:** Find learning resources for skills you need to develop
+- **Customized Learning Paths:** Access step-by-step learning plans for each skill
+- **Course Recommendations:** Discover relevant courses, articles, and videos
 
+### Resume Resources
+- **Resume Templates:** Access professional resume templates for different industries
+- **Formatting Guides:** Learn best practices for resume formatting
+- **Resume Review:** Get detailed feedback on your resume's strengths and weaknesses
 
-## Project Structure
+## How to Use
 
-### Frontend Structure
-```
-frontend/
-├── public/
-│   ├── favicon.ico
-│   ├── manifest.json
-├── src/
-│   ├── components/               # Reusable components
-│   │   ├── JobInput.jsx
-│   │   ├── JobResults.jsx
-│   │   └── ResumeUpload.jsx
-│   │   └── ResumeReview.jsx
-│   ├── pages/
-│   │   └── Home.jsx              # Main page component
-│   ├── App.jsx                   # App root component
-│   └── index.jsx                 # Entry point
-├── .eslintrc.js                  # ESLint configuration
-├── .prettierrc                   # Prettier configuration
-├── index.html
-├── package.json
-└── vite.config.js
-```
+1. **Visit** the live application at [https://hxndev.github.io/JobFit/](https://hxndev.github.io/JobFit/)
+2. **Provide a Google Gemini API Key** when prompted (this is used to power the AI features)
+3. **Upload your resume** (PDF or TXT format)
+4. **Enter job details** for the positions you're interested in
+5. **Analyze and improve** your application materials using JobFit's tools
 
-### Backend Structure
-```
-backend/
-├── app/
-│   ├── __init__.py              # App initialization
-│   ├── main.py                  # Entry point
-│   ├── routes.py                # API routes
-│   ├── resume_analyzer.py       # Resume analysis logic
-│   ├── cover_letter.py          # Cover letter generation
-│   └── job_scraper.py           # Job description scraping
-├── .env                         # Environment variables
-├── ruff.toml                    # Ruff configuration
-├── Makefile                     # Development commands
-├── .pre-commit-config.yaml      # Pre-commit configuration
-└── requirements.txt             # Python dependencies
-```
+## Getting a Google Gemini API Key
 
-## Prerequisites
-- Node.js (v14 or higher)
-- Python 3.11 or higher
-- Google Cloud Console account for Gemini API key
+JobFit uses Google's Gemini AI to power its features. You'll need to provide your own API key:
 
-## Development Setup
+1. Visit [Google AI Studio](https://aistudio.google.com/)
+2. Sign in with your Google account
+3. Navigate to "API Keys" in the left sidebar
+4. Create a new API key
+5. Copy and paste the key into JobFit when prompted
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/HxnDev/Job-Match-Analyzer.git
-cd Job-Match-Analyzer
-```
+## Privacy & Security
 
-### 2. Backend Setup
-```bash
-cd backend
+- Your API key is stored only in your browser's local storage
+- Resume and job details are processed securely and not stored permanently
+- All data is transmitted via secure HTTPS connections
 
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Create .env file
-echo "GEMINI_API_KEY=your_api_key_here" > .env
-
-# Check code quality
-make check
-
-# Fix formatting issues
-make format
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Check code quality
-npm run check
-
-# Fix formatting issues
-npm run format
-
-# Start development server
-npm run dev
-```
-
-### 4. Get Gemini API Key
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project
-3. Enable the Gemini API
-4. Create API credentials
-5. Copy the API key to your backend `.env` file
-
-### 5. Run the Application
-```bash
-# Terminal 1 (Backend)
-cd backend
-python -m app.main
-
-# Terminal 2 (Frontend)
-cd frontend
-npm run dev
-```
-
-Visit `http://localhost:5173` to use the application.
-
-## Code Quality
+## Technologies Used
 
 ### Frontend
-- ESLint for linting
-- Prettier for code formatting
-- Run checks: `npm run check`
-- Fix formatting: `npm run format`
+- React.js
+- Mantine UI
+- Axios for API requests
+- React Router for navigation
 
 ### Backend
-- Ruff for both linting and formatting
-- Run checks: `make check`
-- Fix formatting: `make format`
+- Flask (Python)
+- Google Generative AI API
+- PyPDF2 for PDF processing
 
-## API Documentation
+## Contribute
 
-### POST /api/analyze
-Analyzes resume against job descriptions.
-- Request: Multipart form data
-  - `resume`: PDF/TXT file
-  - `job_links`: JSON string of URLs
-- Response: JSON with analysis results
+Have suggestions or feedback? Feel free to:
 
-### POST /api/cover-letter
-Generates a cover letter.
-- Request: JSON
-  - `job_link`: String
-- Response: JSON with generated cover letter
-
-## Contributing
-
-### Commit Message Format
-```
-type(scope): description
-
-Types:
-- feat: New feature
-- fix: Bug fix
-- docs: Documentation
-- style: Formatting
-- refactor: Code restructuring
-- test: Tests
-- chore: Maintenance
-
-Example:
-feat(frontend): add job link validation
-```
-
-### Pull Request Process
-1. Create a feature branch: `feature/description` or `fix/description`
-2. Follow commit message format
-3. Update documentation if needed
-4. Ensure all code quality checks pass
-5. Request review from maintainers
-
-### Code Style
-- Frontend: Follow React best practices, use functional components
-- Backend: Follow PEP 8 guidelines via Ruff
-- Document all functions with docstrings
-- Maintain consistent error handling
-
-## Why Gemini AI?
-1. Free Tier Available: Unlike GPT-4, Gemini offers generous free usage
-2. Strong Performance: Comparable results to other LLMs
-3. Easy Integration: Simple Python SDK
-4. Cost-Effective: Perfect for open-source projects
+- [Open an issue](https://github.com/HxnDev/JobFit/issues)
+- [Connect on LinkedIn](https://www.linkedin.com/in/hassan-shahzad-2a6617212/)
+- Send feature requests to hassanshahzad.dev@gmail.com
 
 ## License
-MIT License. See [LICENSE](LICENSE) for details.
 
-## Support
-- 🐛 Found a bug? [Open an issue](https://github.com/HxnDev/Job-Match-Analyzer/issues)
-- 💡 Have an idea? [Submit a feature request](https://github.com/HxnDev/Job-Match-Analyzer/issues)
-- 🤝 Want to contribute? [Check our contribution guide](#contributing)
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Author
-[Hassan Shahzad](https://github.com/HxnDev)
+---
+
+© 2025 JobFit | All rights reserved
