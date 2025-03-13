@@ -11,6 +11,9 @@ on:
   # Allow manual triggering
   workflow_dispatch:
 
+permissions:
+  contents: write  # Add this line to grant write permissions
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -43,10 +46,3 @@ jobs:
           folder: frontend/dist
           branch: gh-pages
           clean: true
-          
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-artifacts
-          path: frontend/dist
-          if-no-files-found: error
