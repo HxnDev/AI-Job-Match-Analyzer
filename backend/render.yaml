@@ -1,0 +1,19 @@
+services:
+  # Backend API service
+  - type: web
+    name: jobfit-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn 'app:create_app()' --config gunicorn_config.py
+    healthCheckPath: /api/health
+    plan: free
+    runtime: python
+    region: ohio  # Choose the appropriate region
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: true
+    scaling:
+      minInstances: 0  # Allow scaling to 0 for free tier
+      maxInstances: 1  # Max 1 instance for free tier

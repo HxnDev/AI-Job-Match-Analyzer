@@ -3,6 +3,7 @@ Resume analysis module for processing and analyzing resumes against job descript
 This module handles PDF parsing, text extraction, and AI-based analysis.
 """
 
+import gc
 import io
 import json
 import logging
@@ -19,10 +20,14 @@ from .ats_analyzer import analyze_ats_compatibility
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Maximum content length for job descriptions to prevent token limits
+MAX_JOB_DESCRIPTION_LENGTH = 1500
+MAX_RESUME_CONTENT_LENGTH = 5000
+
 
 def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
     """
-    Extract text content from a PDF file.
+    Extract text content from a PDF file with memory optimization.
 
     Args:
         file_bytes: File object containing the PDF data
@@ -34,15 +39,40 @@ def extract_text_from_pdf(file_bytes: BinaryIO) -> str:
         ValueError: If there's an error reading the PDF
     """
     try:
+        # Create a BytesIO buffer for efficient memory usage
         pdf_buffer = io.BytesIO(file_bytes.read())
         file_bytes.seek(0)
 
-        pdf = PdfReader(pdf_buffer)
+        # Use context manager for better resource management
         text = ""
+        
+        # Open PDF reader with the buffer
+        pdf = PdfReader(pdf_buffer)
+        
+        # Process pages one by one to reduce memory usage
         for page in pdf.pages:
-            text += page.extract_text() + "\n"
+            # Extract text from the page and append to result
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+                
+        # Close the buffer explicitly
+        pdf_buffer.close()
+        
+        # Force garbage collection to free up memory
+        gc.collect()
+        
+        # Truncate very long resume content to prevent token limits
+        if len(text) > MAX_RESUME_CONTENT_LENGTH:
+            logger.info(f"Truncating resume content from {len(text)} to {MAX_RESUME_CONTENT_LENGTH} chars")
+            text = text[:MAX_RESUME_CONTENT_LENGTH] + "..."
+            
         return text
+        
     except Exception as e:
+        logger.error(f"Error reading PDF: {str(e)}", exc_info=True)
+        # Clean up resources on error
+        gc.collect()
         raise ValueError(f"Error reading PDF: {str(e)}") from e
 
 
@@ -66,6 +96,10 @@ def analyze_resume(resume: BinaryIO, job_details: List[Dict], custom_instruction
                 resume_content = extract_text_from_pdf(resume)
             elif filename.endswith(".txt"):
                 resume_content = resume.read().decode("utf-8")
+                # Truncate very long resume content
+                if len(resume_content) > MAX_RESUME_CONTENT_LENGTH:
+                    logger.info(f"Truncating resume content from {len(resume_content)} to {MAX_RESUME_CONTENT_LENGTH} chars")
+                    resume_content = resume_content[:MAX_RESUME_CONTENT_LENGTH] + "..."
             else:
                 return {
                     "success": False,
@@ -93,6 +127,10 @@ def analyze_resume(resume: BinaryIO, job_details: List[Dict], custom_instruction
         if job_details and "job_description" in job_details[0] and job_details[0]["job_description"]:
             ats_result = analyze_ats_compatibility(resume_content)
 
+        # Clean up memory
+        del resume_content
+        gc.collect()
+
         if ats_result and ats_result["success"]:
             return {"success": True, "results": analysis_result["jobs"], "ats_analysis": ats_result["analysis"]}
         else:
@@ -100,6 +138,8 @@ def analyze_resume(resume: BinaryIO, job_details: List[Dict], custom_instruction
 
     except Exception as e:
         logger.error(f"Error in analyze_resume: {str(e)}", exc_info=True)
+        # Clean up memory on error
+        gc.collect()
         return {"success": False, "error": f"Error analyzing resume: {str(e)}"}
 
 
@@ -118,7 +158,7 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
     # Log for debugging
     logger.info(f"Analyzing resume against {len(job_details)} job entries")
 
-    # Format job details for the AI - with truncated job links
+    # Format job details for the AI - with truncated job links and descriptions
     jobs_text = []
     for i, job in enumerate(job_details):
         # Create a copy of the job dictionary to avoid modifying the original
@@ -154,9 +194,9 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
         if job_copy.get("job_description"):
             # Truncate job description if it's very long
             job_desc = job_copy.get("job_description")
-            if len(job_desc) > 2000:  # Set a reasonable limit
-                logger.info(f"Truncating job description for job #{i+1} from {len(job_desc)} to 2000 chars")
-                job_text += f"Description: {job_desc[:2000]}...\n"
+            if len(job_desc) > MAX_JOB_DESCRIPTION_LENGTH:
+                logger.info(f"Truncating job description for job #{i+1} from {len(job_desc)} to {MAX_JOB_DESCRIPTION_LENGTH} chars")
+                job_text += f"Description: {job_desc[:MAX_JOB_DESCRIPTION_LENGTH]}...\n"
             else:
                 job_text += f"Description: {job_desc}\n"
 
@@ -169,11 +209,17 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
     # Join all job details
     all_jobs_text = "\n\n".join(jobs_text)
 
+    # Truncate resume content for prompt if needed again
+    if len(resume_content) > MAX_RESUME_CONTENT_LENGTH:
+        prompt_resume = resume_content[:MAX_RESUME_CONTENT_LENGTH] + "..."
+    else:
+        prompt_resume = resume_content
+
     base_prompt = f"""
     You are a professional resume analyzer. Analyze this resume content against the job details provided.
 
     Resume content to analyze:
-    {resume_content}
+    {prompt_resume}
 
     Job details to analyze against:
     {all_jobs_text}
@@ -284,10 +330,17 @@ def generate_analysis(resume_content: str, job_details: List[Dict], custom_instr
             if not job.get("match_percentage"):
                 job["match_percentage"] = 50
 
+        # Clean up memory before returning
+        del prompt
+        del response
+        gc.collect()
+
         return {"success": True, "jobs": analysis["jobs"]}
 
     except Exception as e:
         logger.error(f"Error in generate_analysis: {str(e)}", exc_info=True)
+        # Clean up memory on error
+        gc.collect()
         return {"success": False, "error": f"Error generating analysis: {str(e)}"}
 
 
@@ -304,15 +357,29 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
         dict: Review results including strengths, weaknesses, and improvement suggestions
     """
     try:
+        # Truncate resume content for the prompt if it's too long
+        if len(resume_content) > MAX_RESUME_CONTENT_LENGTH:
+            logger.info(f"Truncating resume content for review from {len(resume_content)} to {MAX_RESUME_CONTENT_LENGTH} chars")
+            prompt_resume = resume_content[:MAX_RESUME_CONTENT_LENGTH] + "..."
+        else:
+            prompt_resume = resume_content
+            
+        # Truncate job description if it's very long
+        if len(job_description) > MAX_JOB_DESCRIPTION_LENGTH:
+            logger.info(f"Truncating job description for review from {len(job_description)} to {MAX_JOB_DESCRIPTION_LENGTH} chars")
+            prompt_job = job_description[:MAX_JOB_DESCRIPTION_LENGTH] + "..."
+        else:
+            prompt_job = job_description
+            
         base_prompt = f"""
         You are a professional resume reviewer and career coach. Review this resume against the job description
         and provide detailed, actionable feedback to help improve the resume.
 
         Resume content:
-        {resume_content}
+        {prompt_resume}
 
         Job description:
-        {job_description}
+        {prompt_job}
 
         IMPORTANT: Your response must be a valid JSON object with the exact structure shown below.
         Do not include any explanations, markdown, or text outside of the JSON object.
@@ -406,9 +473,17 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
                     if section not in existing_sections:
                         review_data.setdefault("improvement_suggestions", []).append({"section": section, "suggestions": ["Consider reviewing this section"]})
 
+                # Clean up memory
+                del prompt
+                del response
+                gc.collect()
+
                 return {"success": True, "review": review_data}
 
             except json.JSONDecodeError as e:
+                # Clean up memory on error
+                gc.collect()
+                
                 return {
                     "success": False,
                     "error": f"Invalid response format from AI model: {str(e)}",
@@ -418,4 +493,6 @@ def generate_resume_review(resume_content: str, job_description: str, custom_ins
             return {"success": False, "error": "Failed to generate resume review"}
 
     except Exception as e:
+        # Clean up memory on error
+        gc.collect()
         return {"success": False, "error": f"Error generating resume review: {str(e)}"}

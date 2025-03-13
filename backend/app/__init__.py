@@ -24,15 +24,24 @@ def create_app() -> Flask:
 
     # Initialize Flask app
     app = Flask(__name__)
-    CORS(app)
+    
+    # Configure CORS based on environment
+    is_production = os.getenv("FLASK_ENV") == "production"
+    if is_production:
+        # In production, allow specific origins
+        allowed_origins = [
+            "https://hxndev.github.io",       # GitHub Pages domain
+            "http://localhost:5173"            # Local dev frontend
+        ]
+        CORS(app, origins=allowed_origins, supports_credentials=True)
+    else:
+        # In development, allow all origins
+        CORS(app)
 
-    # Configure Gemini AI
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not found in environment variables")
-
-    genai.configure(api_key=api_key)
-
+    # API key management is now handled per-request in routes
+    # Default Gemini configuration is still set up here without a key
+    # The actual key will be passed with each request
+    
     # Import and register blueprints
     # Using import_module to avoid circular imports
     routes = import_module(".routes", package="app")
