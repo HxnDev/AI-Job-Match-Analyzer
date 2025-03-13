@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Add this line to grant write permissions
+  contents: write  # Important for deployment
 
 jobs:
   build-and-deploy:
